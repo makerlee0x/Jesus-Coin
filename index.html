@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>$JESUS</title>
+<meta name="description" content="The mission of Jesus Coin is to influence culture and be a light in dark places. Do good. Give more.">
+<meta name="theme-color" content="#a3bfe1">
+<meta property="og:title" content="$JESUS">
+<meta property="og:description" content="The mission of Jesus Coin is to influence culture and be a light in dark places. Do good. Give more.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:site" content="@jesustokens">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23a3bfe1'/%3E%3Cg fill='%23fff'%3E%3Ccircle cx='24' cy='36' r='10'/%3E%3Ccircle cx='36' cy='30' r='13'/%3E%3Ccircle cx='46' cy='38' r='8'/%3E%3Crect x='16' y='36' width='36' height='10' rx='5'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* One screen of folded print: powder sky, one soft cloud floating under a paper crease, white mono words laid on the cloud. Static, with a soft glow on top. Single deliberate look. */
+:root {
+  --powder-a: #a3bfe1;
+  --powder-b: #c3d5ec;
+  --white: #ffffff;
+  --tip: rgba(60,90,135,.72);
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+html, body { height: 100%; }
+html { padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px); box-sizing: border-box; }
+body { margin: 0; }
+body { background: var(--powder-a); color: var(--white); overflow: hidden; }
+a { color: inherit; text-decoration: none; }
+p { margin: 0; }
+:focus-visible { outline: 1px solid currentColor; outline-offset: 4px; }
+
+.page { position: relative; height: 100%; overflow: hidden; background: linear-gradient(to bottom, var(--powder-a), var(--powder-b)); }
+
+/* distant wisps */
+.far { position: absolute; inset: -10% -30%; z-index: 1; opacity: .5; filter: blur(14px); }
+
+/* the main cloud and its glow */
+.float { position: absolute; inset: 0; z-index: 2; }
+.float canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.float .cloud { filter: blur(2px) brightness(.93); }
+.float .glow { filter: blur(34px) brightness(1.25); mix-blend-mode: screen; opacity: .75; transform: scale(1.06); }
+
+/* light leak, haze and vignette */
+.atmos { position: absolute; inset: 0; z-index: 7; pointer-events: none;
+  background:
+    radial-gradient(60% 50% at 18% 8%, rgba(255,250,240,.38), transparent 70%),
+    radial-gradient(50% 40% at 85% 95%, rgba(255,255,255,.18), transparent 70%),
+    radial-gradient(120% 100% at 50% 50%, transparent 60%, rgba(60,85,130,.18)); mix-blend-mode: screen; }
+.haze { position: absolute; inset: 0; z-index: 8; pointer-events: none; background: rgba(235,242,252,.08); backdrop-filter: blur(.4px); }
+
+/* paper fold */
+.below-fold { position: absolute; left: 0; right: 0; top: 56%; bottom: 0; z-index: 5; pointer-events: none; background: rgba(255,255,255,.07); }
+.crease { position: absolute; left: 0; right: 0; top: 56%; height: 3px; z-index: 6; pointer-events: none;
+  background: linear-gradient(to bottom, rgba(255,255,255,.8), rgba(255,255,255,.22) 40%, rgba(40,60,90,.18) 70%, transparent); }
+.page::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 9; opacity: .5; mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+
+/* type */
+.pad { position: absolute; z-index: 10; text-shadow: 0 0 14px rgba(255,255,255,.55), 0 0 2px rgba(255,255,255,.4); }
+.mw { font: 500 clamp(13px, 1.25vw, 17px)/1 var(--mono); letter-spacing: .04em; text-shadow: 0 0 3px rgba(60,80,120,.22); }
+.f-1 { left: 36%; top: 47.5%; } .f-2 { left: 55%; top: 57.5%; } .f-3 { left: 26%; top: 65%; }
+.f-tl { top: 24px; left: max(24px, env(safe-area-inset-left, 0px)); margin: 0; font: 500 13px/1 var(--mono); letter-spacing: .06em; }
+.f-tr { top: 24px; right: max(24px, env(safe-area-inset-right, 0px)); width: min(330px, 56vw); text-align: right; font: 400 11.5px/1.55 var(--mono); }
+.f-bl { bottom: 24px; left: max(24px, env(safe-area-inset-left, 0px)); display: flex; flex-wrap: wrap; gap: 6px 18px; font: 500 12px/1 var(--mono); text-transform: uppercase; }
+.f-bl a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.f-br { bottom: 24px; right: max(24px, env(safe-area-inset-right, 0px)); font: 500 11px/1 var(--mono); }
+
+.ca { position: relative; display: flex; gap: 16px; }
+.ca button { font: inherit; letter-spacing: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; opacity: .85; text-shadow: inherit; }
+.ca button:hover, .ca button.done { opacity: 1; }
+.ca button::after { content: attr(data-ca); position: absolute; right: calc(100% + 14px); top: 50%; transform: translateY(-50%); white-space: nowrap;
+  font: 400 11px/1 var(--mono); padding: 7px 9px; background: var(--tip); text-shadow: none; opacity: 0; transition: opacity .15s; pointer-events: none; }
+.ca button:hover::after, .ca button:focus-visible::after { opacity: 1; }
+.ca button.done::after { opacity: 0; }
+
+@media (max-width: 640px) {
+  .f-1 { left: 34%; top: 46%; } .f-2 { left: auto; right: 10%; } .f-3 { left: 18%; }
+  .f-bl { flex-direction: column; }
+  .ca button::after { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <canvas class="far" id="far" aria-hidden="true"></canvas>
+  <div class="float" aria-hidden="true"><canvas class="glow" id="glow"></canvas><canvas class="cloud" id="cloud"></canvas></div>
+  <div class="below-fold"></div>
+  <div class="crease"></div>
+  <div class="atmos"></div>
+  <div class="haze"></div>
+
+  <h1 class="pad f-tl">$JESUS</h1>
+  <p class="pad f-tr">The mission of Jesus Coin is to influence culture and be a light in dark places. It is a decentralized, faith-based crypto that inspires people to love one another and seek a higher calling.</p>
+  <div class="pad mw f-1">DO GOOD</div>
+  <div class="pad mw f-2">GIVE MORE</div>
+  <div class="pad mw f-3">1 TIM 6:18–19</div>
+  <nav class="pad f-bl">
+    <a href="https://x.com/jesustokens" target="_blank" rel="noopener">X</a>
+    <a href="https://t.me/JesusCoinERC" target="_blank" rel="noopener">Telegram</a>
+    <a href="https://www.coingecko.com/en/coins/jesus-coin" target="_blank" rel="noopener">CoinGecko</a>
+    <a href="https://cryptochurchapp.com/" target="_blank" rel="noopener">Crypto Church</a>
+  </nav>
+  <div class="pad f-br"><div class="ca">
+    <button type="button" data-ca="0xba386A4Ca26B85FD057ab1Ef86e3DC7BdeB5ce70" aria-label="Copy ETH contract address">ETH CA</button>
+    <button type="button" data-ca="FQddEUoqKPnAsc4UTkAdAUV3LnCXoZEJMazguC1N11kC" aria-label="Copy SOL contract address">SOL CA</button>
+  </div></div>
+</div>
+
+<script>
+document.querySelectorAll("[data-ca]").forEach(btn => {
+  const label = btn.textContent;
+  btn.addEventListener("click", () => {
+    const done = () => { btn.textContent = "COPIED"; btn.classList.add("done"); setTimeout(() => { btn.textContent = label; btn.classList.remove("done"); }, 1600); };
+    const show = () => { btn.textContent = btn.dataset.ca; };
+    try { navigator.clipboard.writeText(btn.dataset.ca).then(done, show); } catch (e) { show(); }
+  });
+});
+
+function makeNoise(seed) {
+  let s = seed; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  const perm = [...Array(256).keys()];
+  for (let i = 255; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [perm[i], perm[j]] = [perm[j], perm[i]]; }
+  const p = new Uint8Array(512); for (let i = 0; i < 512; i++) p[i] = perm[i & 255];
+  const g = new Float32Array(256); for (let i = 0; i < 256; i++) g[i] = rnd();
+  const n = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, X = xi & 255, Y = yi & 255;
+    const a = g[p[p[X] + Y]], b = g[p[p[X + 1] + Y]], c = g[p[p[X] + Y + 1]], d = g[p[p[X + 1] + Y + 1]];
+    const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf); return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v; };
+  return (x, y) => { let t = 0, amp = .5, f = 1; for (let o = 0; o < 5; o++) { t += n(x * f, y * f) * amp; amp *= .5; f *= 2.03; } return t; };
+}
+const MAIN = { seed: 11, squash: 1.25, shade: [168, 172, 182], blobs: [[.46,.47,.13],[.56,.45,.12],[.36,.52,.11],[.62,.55,.12],[.27,.6,.09],[.44,.6,.12],[.2,.68,.07]] };
+const FAR = { seed: 2, squash: 2.4, shade: [205, 215, 232], blobs: [[.12,.18,.06],[.18,.2,.05],[.78,.14,.07],[.86,.16,.05],[.9,.82,.06],[.08,.86,.05]] };
+function cloudLayer(W, H, cfg) {
+  const k = Math.min(1, Math.sqrt(360000 / (W * H))), w = Math.max(1, Math.round(W * k)), h = Math.max(1, Math.round(H * k));
+  const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+  const ctx = cv.getContext("2d"), img = ctx.createImageData(w, h), d = img.data;
+  const fbm = makeNoise(cfg.seed), m = Math.min(w, h), sc = m * .11, narrow = W < 640 ? 1.25 : 1;
+  const blobs = cfg.blobs.map(([x, y, r]) => [x * w, y * h, r * m * narrow]);
+  const dens = (x, y) => { let f = 0;
+    for (const [bx, by, br] of blobs) { const dx = (x - bx) / br, dy = (y - by) * cfg.squash / br; f += Math.exp(-(dx * dx + dy * dy) * 1.6); }
+    const wx = fbm(x / sc + 11, y / sc) * .6, wy = fbm(x / sc, y / sc + 7) * .6;
+    return Math.min(f, 1.3) + (fbm(x / sc + wx, y / sc + wy) - .5) * 1.1 - .42; };
+  const off = m * .02, [sr, sg, sb] = cfg.shade;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const v = dens(x, y), i = (y * w + x) * 4; if (v <= 0) { d[i + 3] = 0; continue; }
+    const b = Math.max(0, Math.min(1, .8 + (v - dens(x - off * .4, y - off)) * 2));
+    d[i] = sr + (255 - sr) * b; d[i + 1] = sg + (252 - sg) * b; d[i + 2] = sb + (248 - sb) * b; d[i + 3] = 255 * Math.min(1, v / .3);
+  }
+  ctx.putImageData(img, 0, 0); return cv;
+}
+function put(id, src) { const cv = document.getElementById(id); cv.width = src.width; cv.height = src.height; cv.getContext("2d").drawImage(src, 0, 0); }
+function paint() {
+  const W = innerWidth, H = innerHeight;
+  const main = cloudLayer(W, H, MAIN); put("cloud", main); put("glow", main);
+  put("far", cloudLayer(W * 1.6, H * 1.2, FAR));
+}
+paint();
+let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(paint, 200); });
+</script>
+</body>
+</html>
