@@ -121,6 +121,8 @@ dialog img{width:24px;height:24px}
 <div class="field"><label for="eToken">Ethereum token</label><input id="eToken" spellcheck="false"></div>
 <div class="field"><label for="eAdapter">Ethereum adapter</label><input id="eAdapter" spellcheck="false"></div>
 <div class="field"><label for="eOft">Robinhood token</label><input id="eOft" spellcheck="false"></div>
+<div class="field"><label for="eEpEth">LayerZero endpoint, Ethereum side (blank = default)</label><input id="eEpEth" spellcheck="false"></div>
+<div class="field"><label for="eEpRh">LayerZero endpoint, Robinhood side (blank = default)</label><input id="eEpRh" spellcheck="false"></div>
 <div class="field"><label for="eRpc">Robinhood RPC URL (only if your wallet asks to add the network)</label><input id="eRpc" spellcheck="false"></div>
 <button id="saveEdit" class="btn" type="button">Save</button>
 <button id="clear" class="btn" type="button">Forget this mode's deployment</button>
@@ -151,7 +153,7 @@ const OPTIONS = ethers.solidityPacked(["uint16","uint8","uint16","uint8","uint12
 const NETS = {
   test: {
     eth: { chainId: 11155111, name: "Sepolia", eid: 40161, endpoint: "0x6EDCE65403992e310A62460808c4b910D972f10f", explorer: "https://sepolia.etherscan.io", token: "" },
-    rh:  { chainId: 46630, name: "Robinhood testnet", eid: 40451, endpoint: "0x3aCAAf60502791D199a5a5F0B173D78229eBFe32", explorer: "" },
+    rh:  { chainId: 46630, name: "Robinhood testnet", eid: 40451, endpoint: "0x3aCAAf60502791D199a5a5F0B173D78229eBFe32", explorer: "https://explorer.testnet.chain.robinhood.com" },
     scan: "https://testnet.layerzeroscan.com/tx/",
   },
   main: {
@@ -173,6 +175,15 @@ const store = {
 };
 const net = () => NETS[mode];
 const ethToken = () => net().eth.token || S.token || "";
+// LayerZero endpoint per side; overridable under "Edit addresses / settings".
+const ep = (side) => (side === "eth" ? S.epEth : S.epRh) || net()[side].endpoint;
+async function checkEndpoint(side, s) {
+  const n = net()[side], a = ep(side);
+  if ((await s.provider.getCode(a)) === "0x") {
+    const where = n.explorer ? ` (check ${n.explorer}/address/${a})` : "";
+    throw new Error(`No LayerZero endpoint at ${a} on ${n.name}${where}. If LayerZero lists a different EndpointV2 address for this chain, enter it under "Edit addresses / settings".`);
+  }
+}
 
 function log(msg, cls) {
   const l = $("log"); if (l.firstChild && l.firstChild.className === "hint") l.innerHTML = "";
@@ -287,12 +298,14 @@ async function step1() {
     if (mode === "main") throw new Error("No JESUS token address");
     S.token = await deploy("Test JESUS token", "eth", "MockJesus", [], s); store.save(); render();
   }
-  S.adapter = await deploy("Adapter", "eth", "JesusOFTAdapter", [ethToken(), net().eth.endpoint, account], s);
+  await checkEndpoint("eth", s);
+  S.adapter = await deploy("Adapter", "eth", "JesusOFTAdapter", [ethToken(), ep("eth"), account], s);
   store.save();
 }
 async function step2() {
   const s = await ensureChain("rh");
-  const args = ["Jesus Coin", "JESUS", net().rh.endpoint, account];
+  await checkEndpoint("rh", s);
+  const args = ["Jesus Coin", "JESUS", ep("rh"), account];
   const salt = $("salt").value.trim();
   if (!salt) { S.oft = await deploy("Robinhood token", "rh", "JesusOFT", args, s); store.save(); return; }
   if (!/^0x[0-9a-fA-F]{64}$/.test(salt)) throw new Error("Salt must be 0x + 64 hex characters");
@@ -374,9 +387,11 @@ function render() {
   $("refresh").disabled = !can || !S.adapter;
   $("eToken").value = ethToken(); $("eToken").disabled = main;
   $("eAdapter").value = S.adapter || ""; $("eOft").value = S.oft || ""; $("eRpc").value = S.rpc || "";
+  $("eEpEth").placeholder = n.eth.endpoint; $("eEpRh").placeholder = n.rh.endpoint;
+  $("eEpEth").value = S.epEth || ""; $("eEpRh").value = S.epRh || "";
   const salt = $("salt").value.trim();
   if (/^0x[0-9a-fA-F]{64}$/.test(salt) && account) {
-    new ethers.ContractFactory(C.JesusOFT.abi, C.JesusOFT.bytecode).getDeployTransaction("Jesus Coin", "JESUS", n.rh.endpoint, account)
+    new ethers.ContractFactory(C.JesusOFT.abi, C.JesusOFT.bytecode).getDeployTransaction("Jesus Coin", "JESUS", ep("rh"), account)
       .then((t) => { $("predicted").textContent = "Will deploy at " + ethers.getCreate2Address(FACTORY, salt, ethers.keccak256(t.data)) + " (owner " + account + ")"; });
   } else $("predicted").textContent = "The salt only works for the wallet it was mined for.";
 }
@@ -398,7 +413,7 @@ $("salt").oninput = render;
 $("dir").onchange = () => { $("r4").classList.add("hidden"); render(); };
 $("saveEdit").onclick = () => {
   const chk = (v) => { v = v.trim(); if (v && !ethers.isAddress(v)) throw new Error("Not an address: " + v); return v ? ethers.getAddress(v) : ""; };
-  try { if (mode === "test") S.token = chk($("eToken").value); S.adapter = chk($("eAdapter").value); S.oft = chk($("eOft").value); S.rpc = $("eRpc").value.trim(); store.save(); log("Saved"); } catch (e) { log(errMsg(e), "err"); }
+  try { if (mode === "test") S.token = chk($("eToken").value); S.adapter = chk($("eAdapter").value); S.oft = chk($("eOft").value); S.rpc = $("eRpc").value.trim(); S.epEth = chk($("eEpEth").value); S.epRh = chk($("eEpRh").value); store.save(); log("Saved"); } catch (e) { log(errMsg(e), "err"); }
   render();
 };
 $("clear").onclick = () => { if (confirm("Forget the " + mode + " addresses saved in this browser? (Contracts on-chain are not affected.)")) { S = {}; store.save(); render(); } };
