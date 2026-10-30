@@ -91,7 +91,7 @@ transaction (see the proxy's repository). `wire.js` must then be run from the `O
 
 ## Before mainnet
 
-- Set DVNs explicitly on both sides. LayerZero's default for Ethereum ⇄ Robinhood is a placeholder DeadDVN, so every quote reverts until this is done. The deploy page's step 3 sets the LayerZero Labs DVN on the send and receive libraries of both sides (and has a Diagnose button); add a second independent DVN later for more safety. The CLI scripts leave the defaults in place.
+- Set DVNs explicitly on both sides. LayerZero's default for Ethereum ⇄ Robinhood is a placeholder DeadDVN, so every quote reverts until this is done. The deploy page's step 3 sets two required DVNs (LayerZero Labs + Nethermind, from lz-address-book) on the send and receive libraries of both sides, and has a Diagnose button. LayerZero Labs will not verify a mainnet message whose config has only one DVN. The CLI scripts leave the defaults in place.
 - The owner key can repoint peers and so control everything in the lockbox. Until it moves to a multisig, keep it on a hardware wallet and use it only for this.
 - Rate limits default to unlimited; set `OUT_LIMIT` / `IN_LIMIT` if you want a cap.
 - Bridge a small amount first. JESUS calls a PinkSale anti-bot hook on every transfer when enabled; it should not affect the adapter, but confirm with a real transfer.

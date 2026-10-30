@@ -92,10 +92,10 @@ dialog img{width:24px;height:24px}
 
 <section id="c3" class="card">
 <div class="head"><h2>3. Connect the two sides</h2><span class="pill" id="b3"></span></div>
-<p>Tells each side the other's address, switches traffic on (no daily limit) and, on mainnet, sets the LayerZero Labs verifier (LayerZero's default for a new route is a placeholder that blocks every transfer). Up to five confirmations per side; steps already done are skipped.</p>
+<p>Tells each side the other's address, switches traffic on (no daily limit) and, on mainnet, sets two verifiers, LayerZero Labs and Nethermind (LayerZero's default for a new route is a placeholder that blocks every transfer, and LayerZero Labs won't verify with fewer than two). Up to five confirmations per side; steps already done are skipped.</p>
 <div class="row"><span><strong>Ethereum adapter</strong> → Robinhood token</span><button id="go3a" class="btn" type="button">Connect on Ethereum</button></div>
 <div class="row"><span><strong>Robinhood token</strong> → Ethereum adapter</span><button id="go3b" class="btn" type="button">Connect on Robinhood</button></div>
-<div class="row" id="dvnRow"><span><strong>Security:</strong> LayerZero Labs verifier (DVN) on both directions. Two confirmations per side.</span><span style="display:flex;gap:8px;flex-wrap:wrap"><button id="dvnA" class="btn" type="button">Set on Ethereum</button><button id="dvnB" class="btn" type="button">Set on Robinhood</button></span></div>
+<div class="row" id="dvnRow"><span><strong>Security:</strong> two verifiers (LayerZero Labs + Nethermind) on both directions; LayerZero requires at least two on mainnet. Two confirmations per side.</span><span style="display:flex;gap:8px;flex-wrap:wrap"><button id="dvnA" class="btn" type="button">Set on Ethereum</button><button id="dvnB" class="btn" type="button">Set on Robinhood</button></span></div>
 </section>
 
 <section id="c4" class="card">
@@ -158,8 +158,8 @@ const NETS = {
     scan: "https://testnet.layerzeroscan.com/tx/",
   },
   main: {
-    eth: { chainId: 1, name: "Ethereum", eid: 30101, endpoint: "0x1a44076050125825900e736c501f859c50fE728c", dvn: "0x589dEDbD617e0CBcB916A9223F4d1300c294236b", deadDvn: "0x747C741496a507E4B404b50463e691A8d692f6Ac", explorer: "https://etherscan.io", token: "0xba386A4Ca26B85FD057ab1Ef86e3DC7BdeB5ce70" },
-    rh:  { chainId: 4663, name: "Robinhood Chain", eid: 30416, endpoint: "0x6F475642a6e85809B1c36Fa62763669b1b48DD5B", dvn: "0xd01ae6905d48315f7bE10C7330aeCF8360Ef5b12", deadDvn: "0x6788f52439ACA6BFF597d3eeC2DC9a44B8FEE842", explorer: "" },
+    eth: { chainId: 1, name: "Ethereum", eid: 30101, endpoint: "0x1a44076050125825900e736c501f859c50fE728c", dvns: ["0x589dEDbD617e0CBcB916A9223F4d1300c294236b", "0xa59BA433ac34D2927232918Ef5B2eaAfcF130BA5"], deadDvn: "0x747C741496a507E4B404b50463e691A8d692f6Ac", explorer: "https://etherscan.io", token: "0xba386A4Ca26B85FD057ab1Ef86e3DC7BdeB5ce70" },
+    rh:  { chainId: 4663, name: "Robinhood Chain", eid: 30416, endpoint: "0x6F475642a6e85809B1c36Fa62763669b1b48DD5B", dvns: ["0xd01ae6905d48315f7bE10C7330aeCF8360Ef5b12", "0x0Ffe02DF012299A370D5dd69298A5826EAcaFdF8"], deadDvn: "0x6788f52439ACA6BFF597d3eeC2DC9a44B8FEE842", explorer: "" },
     scan: "https://layerzeroscan.com/tx/",
   },
 };
@@ -379,27 +379,31 @@ const EP_ABI = [
   "function setConfig(address,address,tuple(uint32 eid, uint32 configType, bytes config)[])",
 ];
 const ULN_T = "tuple(uint64 confirmations, uint8 requiredDVNCount, uint8 optionalDVNCount, uint8 optionalDVNThreshold, address[] requiredDVNs, address[] optionalDVNs)";
-// DVN addresses: LayerZero-Labs/lz-address-book (LayerZeroV2DVN<Chain>Mainnet.DVN_LAYERZERO_LABS). Not the
+// DVN addresses: LayerZero-Labs/lz-address-book (LayerZeroV2DVN<Chain>Mainnet: DVN_LAYERZERO_LABS, DVN_NETHERMIND).
+// LayerZero Labs only verifies mainnet messages whose config has at least 2 DVNs. Not the
 // lz-evm-sdk-v2 "DVN" deployment, which on Robinhood is a different contract that LayerZero Labs doesn't run.
 // LayerZero ships new pathways with a placeholder "dead" DVN, so quotes revert until the OApp picks real verifiers.
 // Sets the LayerZero Labs DVN as the single required verifier for sending and receiving, keeping the default
 // block confirmations (which LayerZero already pairs up across the two chains).
 async function setDvns(side) {
   const n = net()[side];
-  if (!n.dvn) return; // testnet / local: LayerZero's defaults work
+  if (!n.dvns) return; // testnet / local: LayerZero's defaults work
   const s = await ensureChain(side);
   const me = side === "eth" ? S.adapter : S.oft, eid = side === "eth" ? net().rh.eid : net().eth.eid;
   const c = new ethers.Contract(me, C[side === "eth" ? "JesusBridge" : "JesusOFT"].abi, s);
   if ((await c.owner()).toLowerCase() !== account.toLowerCase()) throw new Error("Connected wallet isn't the owner");
+  // The ULN requires required DVNs sorted ascending with no duplicates.
+  const want = [...n.dvns].map(ethers.getAddress).sort((a, b) => (BigInt(a) < BigInt(b) ? -1 : 1));
   const epc = new ethers.Contract(ep(side), EP_ABI, s), coder = ethers.AbiCoder.defaultAbiCoder();
   const libs = [["sending", await epc.getSendLibrary(me, eid)], ["receiving", (await epc.getReceiveLibrary(me, eid))[0]]];
   for (const [what, lib] of libs) {
     const [u] = coder.decode([ULN_T], await epc.getConfig(me, lib, eid, 2));
-    if (u.requiredDVNs.length === 1 && u.requiredDVNs[0].toLowerCase() === n.dvn.toLowerCase() && u.optionalDVNs.length === 0) { log(n.name + " " + what + " verifier already set"); continue; }
-    const cfg = coder.encode([ULN_T], [[u.confirmations, 1, 0, 0, [n.dvn], []]]);
-    await send("Set " + what + " verifier on " + n.name, side, epc.setConfig(me, lib, [{ eid, configType: 2, config: cfg }]));
+    const have = u.requiredDVNs.map((a) => a.toLowerCase()).join();
+    if (have === want.map((a) => a.toLowerCase()).join() && u.optionalDVNs.length === 0) { log(n.name + " " + what + " verifiers already set"); continue; }
+    const cfg = coder.encode([ULN_T], [[u.confirmations, want.length, 0, 0, want, []]]);
+    await send("Set " + what + " verifiers on " + n.name, side, epc.setConfig(me, lib, [{ eid, configType: 2, config: cfg }]));
   }
-  S[side === "eth" ? "dvnEth" : "dvnRh"] = true; store.save();
+  S[side === "eth" ? "dvnEth2" : "dvnRh2"] = true; store.save();
 }
 const LZ_ERRORS = [
   "error LZ_DefaultSendLibUnavailable()", "error LZ_DefaultReceiveLibUnavailable()", "error LZ_InvalidArgument()", "error LZ_InsufficientFee(uint256,uint256,uint256,uint256)",
@@ -487,9 +491,9 @@ function render() {
   $("go3a").disabled = !can || !S.oft || !!S.wiredEth; $("go3a").textContent = S.wiredEth ? "✓ Connected" : "Connect on Ethereum";
   $("go3b").disabled = !can || !S.oft || !!S.wiredRh; $("go3b").textContent = S.wiredRh ? "✓ Connected" : "Connect on Robinhood";
   $("go4").disabled = !can || !(S.wiredEth && S.wiredRh);
-  $("dvnRow").classList.toggle("hidden", !net().eth.dvn);
-  $("dvnA").disabled = !can || !S.adapter || !S.oft; $("dvnA").textContent = S.dvnEth ? "✓ Set on Ethereum" : "Set on Ethereum";
-  $("dvnB").disabled = !can || !S.adapter || !S.oft; $("dvnB").textContent = S.dvnRh ? "✓ Set on Robinhood" : "Set on Robinhood";
+  $("dvnRow").classList.toggle("hidden", !net().eth.dvns);
+  $("dvnA").disabled = !can || !S.adapter || !S.oft; $("dvnA").textContent = S.dvnEth2 ? "✓ Set on Ethereum" : "Set on Ethereum";
+  $("dvnB").disabled = !can || !S.adapter || !S.oft; $("dvnB").textContent = S.dvnRh2 ? "✓ Set on Robinhood" : "Set on Robinhood";
   $("refresh").disabled = !can || !S.adapter;
   $("eToken").value = ethToken(); $("eToken").disabled = main;
   $("eAdapter").value = S.adapter || ""; $("eOft").value = S.oft || ""; $("eRpc").value = S.rpc || "";
