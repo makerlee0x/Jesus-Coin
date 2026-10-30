@@ -95,6 +95,7 @@ dialog img{width:24px;height:24px}
 <p>Tells each side the other's address and switches traffic on (no daily limit). Up to three confirmations per side; steps already done are skipped.</p>
 <div class="row"><span><strong>Ethereum adapter</strong> → Robinhood token</span><button id="go3a" class="btn" type="button">Connect on Ethereum</button></div>
 <div class="row"><span><strong>Robinhood token</strong> → Ethereum adapter</span><button id="go3b" class="btn" type="button">Connect on Robinhood</button></div>
+<div class="row" id="dvnRow"><span><strong>Security:</strong> LayerZero Labs verifier (DVN) on both directions. Two confirmations per side.</span><span style="display:flex;gap:8px;flex-wrap:wrap"><button id="dvnA" class="btn" type="button">Set on Ethereum</button><button id="dvnB" class="btn" type="button">Set on Robinhood</button></span></div>
 </section>
 
 <section id="c4" class="card">
@@ -157,8 +158,8 @@ const NETS = {
     scan: "https://testnet.layerzeroscan.com/tx/",
   },
   main: {
-    eth: { chainId: 1, name: "Ethereum", eid: 30101, endpoint: "0x1a44076050125825900e736c501f859c50fE728c", explorer: "https://etherscan.io", token: "0xba386A4Ca26B85FD057ab1Ef86e3DC7BdeB5ce70" },
-    rh:  { chainId: 4663, name: "Robinhood Chain", eid: 30416, endpoint: "0x6F475642a6e85809B1c36Fa62763669b1b48DD5B", explorer: "" },
+    eth: { chainId: 1, name: "Ethereum", eid: 30101, endpoint: "0x1a44076050125825900e736c501f859c50fE728c", dvn: "0x589dEDbD617e0CBcB916A9223F4d1300c294236b", deadDvn: "0x747C741496a507E4B404b50463e691A8d692f6Ac", explorer: "https://etherscan.io", token: "0xba386A4Ca26B85FD057ab1Ef86e3DC7BdeB5ce70" },
+    rh:  { chainId: 4663, name: "Robinhood Chain", eid: 30416, endpoint: "0x6F475642a6e85809B1c36Fa62763669b1b48DD5B", dvn: "0x282b3386571f7f794450d5789911a9804FA346b4", deadDvn: "0x6788f52439ACA6BFF597d3eeC2DC9a44B8FEE842", explorer: "" },
     scan: "https://layerzeroscan.com/tx/",
   },
 };
@@ -360,7 +361,29 @@ const EP_ABI = [
   "function getReceiveLibrary(address,uint32) view returns (address,bool)",
   "function isSupportedEid(uint32) view returns (bool)",
   "function getConfig(address,address,uint32,uint32) view returns (bytes)",
+  "function setConfig(address,address,tuple(uint32 eid, uint32 configType, bytes config)[])",
 ];
+const ULN_T = "tuple(uint64 confirmations, uint8 requiredDVNCount, uint8 optionalDVNCount, uint8 optionalDVNThreshold, address[] requiredDVNs, address[] optionalDVNs)";
+// LayerZero ships new pathways with a placeholder "dead" DVN, so quotes revert until the OApp picks real verifiers.
+// Sets the LayerZero Labs DVN as the single required verifier for sending and receiving, keeping the default
+// block confirmations (which LayerZero already pairs up across the two chains).
+async function setDvns(side) {
+  const n = net()[side];
+  if (!n.dvn) { log("No verifier change needed on " + n.name); return; }
+  const s = await ensureChain(side);
+  const me = side === "eth" ? S.adapter : S.oft, eid = side === "eth" ? net().rh.eid : net().eth.eid;
+  const c = new ethers.Contract(me, C[side === "eth" ? "JesusBridge" : "JesusOFT"].abi, s);
+  if ((await c.owner()).toLowerCase() !== account.toLowerCase()) throw new Error("Connected wallet isn't the owner");
+  const epc = new ethers.Contract(ep(side), EP_ABI, s), coder = ethers.AbiCoder.defaultAbiCoder();
+  const libs = [["sending", await epc.getSendLibrary(me, eid)], ["receiving", (await epc.getReceiveLibrary(me, eid))[0]]];
+  for (const [what, lib] of libs) {
+    const [u] = coder.decode([ULN_T], await epc.getConfig(me, lib, eid, 2));
+    if (u.requiredDVNs.length === 1 && u.requiredDVNs[0].toLowerCase() === n.dvn.toLowerCase() && u.optionalDVNs.length === 0) { log(n.name + " " + what + " verifier already set"); continue; }
+    const cfg = coder.encode([ULN_T], [[u.confirmations, 1, 0, 0, [n.dvn], []]]);
+    await send("Set " + what + " verifier on " + n.name, side, epc.setConfig(me, lib, [{ eid, configType: 2, config: cfg }]));
+  }
+  S[side === "eth" ? "dvnEth" : "dvnRh"] = true; store.save();
+}
 const LZ_ERRORS = [
   "error LZ_DefaultSendLibUnavailable()", "error LZ_DefaultReceiveLibUnavailable()", "error LZ_InvalidArgument()", "error LZ_InsufficientFee(uint256,uint256,uint256,uint256)",
   "error LZ_ULN_InvalidWorkerId(uint8)", "error LZ_ULN_InvalidWorkerOptions(uint256)", "error LZ_ULN_InvalidLegacyType1Option()", "error LZ_ULN_InvalidLegacyType2Option()",
@@ -394,6 +417,7 @@ async function diagnose() {
     } catch (e) { say("executor config unreadable: " + errMsg(e), true); }
     try {
       const [u] = coder.decode(["tuple(uint64 confirmations, uint8 requiredDVNCount, uint8 optionalDVNCount, uint8 optionalDVNThreshold, address[] requiredDVNs, address[] optionalDVNs)"], await epc.getConfig(me, lib, dstEid, 2));
+      if (net()[side].deadDvn && u.requiredDVNs.some((a) => a.toLowerCase() === net()[side].deadDvn.toLowerCase())) say("the required verifier is LayerZero's placeholder DEAD DVN: click Set on both sides in step 3", true);
       say("DVNs: required [" + u.requiredDVNs.join(", ") + "] optional [" + u.optionalDVNs.join(", ") + "] threshold " + u.optionalDVNThreshold + ", confirmations " + u.confirmations);
     } catch (e) { say("DVN config unreadable: " + errMsg(e), true); }
   }
@@ -445,6 +469,9 @@ function render() {
   $("go3a").disabled = !can || !S.oft || !!S.wiredEth; $("go3a").textContent = S.wiredEth ? "✓ Connected" : "Connect on Ethereum";
   $("go3b").disabled = !can || !S.oft || !!S.wiredRh; $("go3b").textContent = S.wiredRh ? "✓ Connected" : "Connect on Robinhood";
   $("go4").disabled = !can || !(S.wiredEth && S.wiredRh);
+  $("dvnRow").classList.toggle("hidden", !net().eth.dvn);
+  $("dvnA").disabled = !can || !S.adapter || !S.oft; $("dvnA").textContent = S.dvnEth ? "✓ Set on Ethereum" : "Set on Ethereum";
+  $("dvnB").disabled = !can || !S.adapter || !S.oft; $("dvnB").textContent = S.dvnRh ? "✓ Set on Robinhood" : "Set on Robinhood";
   $("refresh").disabled = !can || !S.adapter;
   $("eToken").value = ethToken(); $("eToken").disabled = main;
   $("eAdapter").value = S.adapter || ""; $("eOft").value = S.oft || ""; $("eRpc").value = S.rpc || "";
@@ -468,6 +495,8 @@ $("go1").onclick = () => run("Step 1", step1);
 $("go2").onclick = () => run("Step 2", step2);
 $("go3a").onclick = () => run("Connect on Ethereum", () => wire("eth"));
 $("go3b").onclick = () => run("Connect on Robinhood", () => wire("rh"));
+$("dvnA").onclick = () => run("Set verifier on Ethereum", () => setDvns("eth"));
+$("dvnB").onclick = () => run("Set verifier on Robinhood", () => setDvns("rh"));
 $("go4").onclick = () => run("Bridge", bridge);
 $("refresh").onclick = () => run("Balance", refreshBal);
 $("diag").onclick = () => run("Diagnose", diagnose);
