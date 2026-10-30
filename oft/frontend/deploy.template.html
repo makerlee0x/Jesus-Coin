@@ -105,7 +105,7 @@ dialog img{width:24px;height:24px}
 <div class="field"><label for="dir">Direction</label><select id="dir"><option value="out">Ethereum → Robinhood</option><option value="back">Robinhood → Ethereum</option></select></div>
 <div class="field"><label for="amt">Amount (JESUS)</label><input id="amt" value="1000000" inputmode="decimal"></div>
 </div>
-<div class="row"><span id="bal">Balance: connect and refresh</span><span style="display:flex;gap:8px;flex-wrap:wrap"><button id="refresh" class="btn" type="button">Refresh balance</button><button id="diag" class="btn" type="button">Diagnose</button><button id="go4" class="btn primary" type="button">Bridge</button></span></div>
+<div class="row"><span id="bal">Balance: connect and refresh</span><span style="display:flex;gap:8px;flex-wrap:wrap"><button id="refresh" class="btn" type="button">Refresh balance</button><button id="diag" class="btn" type="button">Diagnose</button><button id="skip" class="btn" type="button">Skip stuck transfer</button><button id="go4" class="btn primary" type="button">Bridge</button></span></div>
 <div class="row hidden" id="r4"><span id="r4t"></span></div>
 </section>
 </main>
@@ -377,6 +377,8 @@ const EP_ABI = [
   "function isSupportedEid(uint32) view returns (bool)",
   "function getConfig(address,address,uint32,uint32) view returns (bytes)",
   "function setConfig(address,address,tuple(uint32 eid, uint32 configType, bytes config)[])",
+  "function inboundNonce(address,uint32,bytes32) view returns (uint64)",
+  "function skip(address,uint32,bytes32,uint64)",
 ];
 const ULN_T = "tuple(uint64 confirmations, uint8 requiredDVNCount, uint8 optionalDVNCount, uint8 optionalDVNThreshold, address[] requiredDVNs, address[] optionalDVNs)";
 // DVN addresses: LayerZero-Labs/lz-address-book (LayerZeroV2DVN<Chain>Mainnet: DVN_LAYERZERO_LABS, DVN_NETHERMIND).
@@ -457,6 +459,20 @@ async function diagnose() {
   }
   say("done. Screenshot or copy this log and send it to Claude.");
 }
+// Transfers on a route are numbered, and the endpoint delivers number N only after every earlier one is verified.
+// A transfer that will never be verified (e.g. sent before the DVN fix) blocks the route until the receiving
+// side's owner skips it. Skipping gives up that transfer: its JESUS stays locked on Ethereum (or burned on
+// Robinhood) and never arrives.
+async function skipStuck() {
+  const out = $("dir").value === "out", side = out ? "rh" : "eth";
+  const me = out ? S.oft : S.adapter, src = out ? S.adapter : S.oft, srcEid = out ? net().eth.eid : net().rh.eid;
+  const s = await ensureChain(side);
+  const epc = new ethers.Contract(ep(side), EP_ABI, s);
+  const next = (await epc.inboundNonce(me, srcEid, ethers.zeroPadValue(src, 32))) + 1n;
+  const route = out ? "Ethereum → Robinhood" : "Robinhood → Ethereum";
+  if (!confirm(`Skip transfer #${next} on ${route}? It will never arrive and its JESUS is given up for good. Only do this for a transfer that is stuck on LayerZero Scan.`)) return;
+  await send("Skip transfer #" + next, side, epc.skip(me, srcEid, ethers.zeroPadValue(src, 32), next));
+}
 async function refreshBal() {
   const out = $("dir").value === "out";
   const s = await ensureChain(out ? "eth" : "rh");
@@ -522,6 +538,7 @@ $("dvnB").onclick = () => run("Set verifier on Robinhood", () => setDvns("rh"));
 $("go4").onclick = () => run("Bridge", bridge);
 $("refresh").onclick = () => run("Balance", refreshBal);
 $("diag").onclick = () => run("Diagnose", diagnose);
+$("skip").onclick = () => run("Skip", skipStuck);
 $("salt").oninput = render;
 $("dir").onchange = () => { $("r4").classList.add("hidden"); render(); };
 $("saveEdit").onclick = () => {

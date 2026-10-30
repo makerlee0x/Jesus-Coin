@@ -59,6 +59,7 @@ const PROXY = "0x7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
   console.log("adapter locked:", ethers.formatEther(await J.balanceOf(adapter)));
   await page.click("#refresh"); await page.waitForTimeout(1500);
   console.log(await page.textContent("#bal"));
+  await page.selectOption("#dir", "out"); await page.click("#skip"); await page.waitForFunction(() => /Skip transfer #\d+ done/.test(document.getElementById("log").textContent), null, { timeout: 20000 }); console.log("SKIP:", (await page.$$eval("#log div", (e) => e.map((x) => x.textContent).filter((t) => t.includes("Skip"))))[0]);
   await page.click("#diag"); await page.waitForFunction(() => /Diagnose: done/.test(document.getElementById("log").textContent), null, { timeout: 20000 });
   console.log("DIAG:", (await page.$$eval("#log div", (e) => e.map((x) => x.textContent).filter((t) => t.includes("Diagnose")))).reverse().join("\n"));
   console.log("steps:", await page.$$eval(".pill", (e) => e.map((x) => x.textContent)));
