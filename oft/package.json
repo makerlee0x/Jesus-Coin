@@ -1,0 +1,29 @@
+{
+  "name": "jesus-oft",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LayerZero OFT bridge for JESUS: OFTAdapter on Ethereum, OFT on Robinhood Chain",
+  "license": "MIT",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test"
+  },
+  "devDependencies": {
+    "@layerzerolabs/lz-evm-messagelib-v2": "^3.0.168",
+    "@layerzerolabs/lz-evm-protocol-v2": "^3.0.168",
+    "@layerzerolabs/lz-evm-v1-0.7": "^3.0.168",
+    "@layerzerolabs/oapp-evm": "^0.4.1",
+    "@layerzerolabs/oft-evm": "^4.0.1",
+    "@layerzerolabs/test-devtools-evm-hardhat": "^0.5.3",
+    "@nomicfoundation/hardhat-chai-matchers": "^2.1.2",
+    "@nomicfoundation/hardhat-ethers": "^3.1.3",
+    "@nomicfoundation/hardhat-network-helpers": "^1.1.2",
+    "@openzeppelin/contracts": "^5.6.1",
+    "@openzeppelin/contracts-upgradeable": "^5.6.1",
+    "chai": "^4.5.0",
+    "ethers": "^6.17.0",
+    "hardhat": "^2.29.1",
+    "solc": "^0.8.22",
+    "solidity-bytes-utils": "^0.8.2"
+  }
+}
