@@ -212,12 +212,24 @@ async function connect() {
 }
 async function useWallet(p) {
   try {
-    const accts = await p.request({ method: "eth_requestAccounts" });
+    // Wallets can hang forever on file:// pages (their messaging rejects the "null" origin), so time out.
+    const accts = await Promise.race([
+      p.request({ method: "eth_requestAccounts" }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error("wallet did not answer")), 15000)),
+    ]);
     eip1193 = p; account = ethers.getAddress(accts[0]);
     p.on && p.on("accountsChanged", (a) => { account = a[0] ? ethers.getAddress(a[0]) : null; render(); });
     log("Connected " + account);
-  } catch (e) { log("Connect failed: " + errMsg(e), "err"); }
+  } catch (e) {
+    log("Connect failed: " + errMsg(e), "err");
+    if (location.protocol === "file:") fileNotice();
+  }
   render();
+}
+function fileNotice() {
+  const el = $("nowallet");
+  el.innerHTML = "<strong>Wallets can't connect to a page opened as a file.</strong> Serve it instead: open Terminal in the folder with this file, run <code>python3 -m http.server 8000</code>, then open <code>http://localhost:8000/" + encodeURIComponent(location.pathname.split("/").pop()) + "</code> in Chrome.";
+  el.classList.remove("hidden");
 }
 function alertBox(t) {
   log(t, "err");
@@ -395,6 +407,7 @@ $("dl").onclick = () => {
   const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })); a.download = "jesus-bridge-" + mode + ".json"; a.click();
 };
 store.load(); render();
+if (location.protocol === "file:") fileNotice();
 </script>
 </body>
 </html>
