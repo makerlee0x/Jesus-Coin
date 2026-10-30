@@ -104,7 +104,7 @@ dialog img{width:24px;height:24px}
 <div class="field"><label for="dir">Direction</label><select id="dir"><option value="out">Ethereum → Robinhood</option><option value="back">Robinhood → Ethereum</option></select></div>
 <div class="field"><label for="amt">Amount (JESUS)</label><input id="amt" value="1000000" inputmode="decimal"></div>
 </div>
-<div class="row"><span id="bal">Balance: connect and refresh</span><span style="display:flex;gap:8px;flex-wrap:wrap"><button id="refresh" class="btn" type="button">Refresh balance</button><button id="go4" class="btn primary" type="button">Bridge</button></span></div>
+<div class="row"><span id="bal">Balance: connect and refresh</span><span style="display:flex;gap:8px;flex-wrap:wrap"><button id="refresh" class="btn" type="button">Refresh balance</button><button id="diag" class="btn" type="button">Diagnose</button><button id="go4" class="btn primary" type="button">Bridge</button></span></div>
 <div class="row hidden" id="r4"><span id="r4t"></span></div>
 </section>
 </main>
@@ -343,12 +343,73 @@ async function bridge() {
     if ((await t.allowance(account, S.adapter)) < amount) await send("Approve JESUS", side, t.approve(S.adapter, amount));
   }
   const p = { dstEid: out ? net().rh.eid : net().eth.eid, to: ethers.zeroPadValue(account, 32), amountLD: amount, minAmountLD: amount - (amount % 10n ** 14n), extraOptions: OPTIONS, composeMsg: "0x", oftCmd: "0x" };
-  const fee = await c.quoteSend(p, false);
+  let fee;
+  try { fee = await c.quoteSend(p, false); }
+  catch (e) { log("Fee quote failed: " + errMsg(e) + ". Running diagnostics…", "err"); await diagnose(); throw new Error("can't quote the LayerZero fee, see the diagnostics above"); }
   log("LayerZero fee " + ethers.formatEther(fee.nativeFee) + " ETH");
   const { tx } = await send("Bridge " + ethers.formatEther(amount) + " JESUS", side, c.send(p, { nativeFee: fee.nativeFee, lzTokenFee: 0n }, account, { value: fee.nativeFee }));
   S[out ? "sentOut" : "sentBack"] = true; store.save();
   $("r4").classList.remove("hidden");
   $("r4t").innerHTML = `Sent. It arrives in a few minutes. <a target="_blank" rel="noopener" href="${net().scan}${tx.hash}">Track on LayerZero Scan</a>`;
+}
+// Read-only checks of the LayerZero pathway. Reads go through a public RPC when one is known,
+// because wallet RPCs often drop revert data ("missing revert data").
+const PUBLIC_RPC = { 1: "https://ethereum-rpc.publicnode.com", 11155111: "https://ethereum-sepolia-rpc.publicnode.com" };
+const EP_ABI = [
+  "function getSendLibrary(address,uint32) view returns (address)",
+  "function getReceiveLibrary(address,uint32) view returns (address,bool)",
+  "function isSupportedEid(uint32) view returns (bool)",
+  "function getConfig(address,address,uint32,uint32) view returns (bytes)",
+];
+const LZ_ERRORS = [
+  "error LZ_DefaultSendLibUnavailable()", "error LZ_DefaultReceiveLibUnavailable()", "error LZ_InvalidArgument()", "error LZ_InsufficientFee(uint256,uint256,uint256,uint256)",
+  "error LZ_ULN_InvalidWorkerId(uint8)", "error LZ_ULN_InvalidWorkerOptions(uint256)", "error LZ_ULN_InvalidLegacyType1Option()", "error LZ_ULN_InvalidLegacyType2Option()",
+  "error NotImplemented()", "error Worker_NotAllowed()", "error Worker_OnlyMessageLib()", "error Executor_UnsupportedOptionType(uint8)",
+  "error Executor_ZeroLzReceiveGasProvided()", "error Executor_NativeAmountExceedsCap(uint256,uint256)", "error EnforcedPause()",
+];
+async function readProvider(side) {
+  const id = net()[side].chainId, url = PUBLIC_RPC[id] || (side === "rh" && (S.rpc || "").trim());
+  if (url) try { const p = new ethers.JsonRpcProvider(url, id, { staticNetwork: true }); await p.getBlockNumber(); return p; } catch {}
+  return (await ensureChain(side)).provider;
+}
+async function diagnose() {
+  const out = $("dir").value === "out", side = out ? "eth" : "rh";
+  const me = out ? S.adapter : S.oft, dstEid = out ? net().rh.eid : net().eth.eid;
+  if (!me) throw new Error("Deploy both sides first");
+  const pr = await readProvider(side);
+  const say = (m, bad) => log("Diagnose: " + m, bad ? "err" : "");
+  const epc = new ethers.Contract(ep(side), EP_ABI, pr);
+  const c = new ethers.Contract(me, C[out ? "JesusBridge" : "JesusOFT"].abi, pr);
+  say(net()[side].name + " endpoint supports eid " + dstEid + ": " + (await epc.isSupportedEid(dstEid).catch(() => "unknown")));
+  say("peer for " + dstEid + ": " + (await c.peers(dstEid)));
+  try { say("paused: " + (await c.paused())); } catch {}
+  try { const r = await c.rateLimits(dstEid); say("outbound limit: " + (r.limit === UNLIMITED ? "unlimited" : r.limit.toString())); } catch {}
+  let lib;
+  try { lib = await epc.getSendLibrary(me, dstEid); say("send library: " + lib); } catch (e) { say("no send library for " + dstEid + " (" + errMsg(e) + ")", true); }
+  if (lib && lib !== ethers.ZeroAddress) {
+    const coder = ethers.AbiCoder.defaultAbiCoder();
+    try {
+      const [ex] = coder.decode(["tuple(uint32 maxMessageSize, address executor)"], await epc.getConfig(me, lib, dstEid, 1));
+      say("executor: " + ex.executor + " (max message " + ex.maxMessageSize + " bytes)");
+    } catch (e) { say("executor config unreadable: " + errMsg(e), true); }
+    try {
+      const [u] = coder.decode(["tuple(uint64 confirmations, uint8 requiredDVNCount, uint8 optionalDVNCount, uint8 optionalDVNThreshold, address[] requiredDVNs, address[] optionalDVNs)"], await epc.getConfig(me, lib, dstEid, 2));
+      say("DVNs: required [" + u.requiredDVNs.join(", ") + "] optional [" + u.optionalDVNs.join(", ") + "] threshold " + u.optionalDVNThreshold + ", confirmations " + u.confirmations);
+    } catch (e) { say("DVN config unreadable: " + errMsg(e), true); }
+  }
+  const amount = ethers.parseEther(String($("amt").value).replace(/,/g, "").trim() || "1");
+  const p = { dstEid, to: ethers.zeroPadValue(account || me, 32), amountLD: amount, minAmountLD: amount - (amount % 10n ** 14n), extraOptions: OPTIONS, composeMsg: "0x", oftCmd: "0x" };
+  try { const f = await c.quoteSend(p, false); say("fee quote OK: " + ethers.formatEther(f.nativeFee) + " ETH"); }
+  catch (e) {
+    const data = e.data || (e.info && e.info.error && e.info.error.data) || (e.error && e.error.data);
+    let why = errMsg(e);
+    if (typeof data === "string" && data.length >= 10) {
+      const iface = new ethers.Interface([...C[out ? "JesusBridge" : "JesusOFT"].abi.filter((x) => x.type === "error"), ...LZ_ERRORS]);
+      try { const d = iface.parseError(data); why = d ? d.name + "(" + d.args.join(", ") + ")" : "unknown error " + data.slice(0, 10); } catch { why = "unknown error " + data.slice(0, 10); }
+    }
+    say("fee quote reverts: " + why, true);
+  }
+  say("done. Screenshot or copy this log and send it to Claude.");
 }
 async function refreshBal() {
   const out = $("dir").value === "out";
@@ -409,6 +470,7 @@ $("go3a").onclick = () => run("Connect on Ethereum", () => wire("eth"));
 $("go3b").onclick = () => run("Connect on Robinhood", () => wire("rh"));
 $("go4").onclick = () => run("Bridge", bridge);
 $("refresh").onclick = () => run("Balance", refreshBal);
+$("diag").onclick = () => run("Diagnose", diagnose);
 $("salt").oninput = render;
 $("dir").onchange = () => { $("r4").classList.add("hidden"); render(); };
 $("saveEdit").onclick = () => {
