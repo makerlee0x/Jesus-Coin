@@ -68,6 +68,7 @@ dialog img{width:24px;height:24px}
 </div></header>
 
 <div class="wrap" style="padding-top:32px">
+<div id="nowallet" class="row hidden" role="alert" style="margin-bottom:20px;border:2px solid var(--bad);background:#fff;display:block;line-height:1.5"></div>
 <h1>Deploy the JESUS bridge</h1>
 <p class="lead">Four steps. Each button asks your wallet to confirm a transaction. Do the whole thing on testnet first. Your progress is saved in this browser, so you can close the page and come back.</p>
 
@@ -192,6 +193,8 @@ window.addEventListener("eip6963:announceProvider", (ev) => { if (!wallets.find(
 window.dispatchEvent(new Event("eip6963:requestProvider"));
 
 async function connect() {
+  window.dispatchEvent(new Event("eip6963:requestProvider"));
+  await new Promise((r) => setTimeout(r, 300));
   if (account) { account = null; eip1193 = null; render(); return; }
   if (wallets.length > 1) {
     const wl = $("wl"); wl.innerHTML = "";
@@ -216,7 +219,15 @@ async function useWallet(p) {
   } catch (e) { log("Connect failed: " + errMsg(e), "err"); }
   render();
 }
-function alertBox(t) { log(t, "err"); }
+function alertBox(t) {
+  log(t, "err");
+  const el = $("nowallet");
+  const local = location.protocol === "file:";
+  el.innerHTML = "<strong>No wallet found on this page.</strong> " + (local
+    ? "Wallet extensions don't load into files opened from your computer unless you allow it. Either: (1) go to <code>chrome://extensions</code> → your wallet (Phantom or MetaMask) → <em>Details</em> → turn on <em>Allow access to file URLs</em>, then reload this page; or (2) open a terminal in this file's folder, run <code>python3 -m http.server 8000</code>, and open <code>http://localhost:8000/" + encodeURIComponent(location.pathname.split("/").pop()) + "</code>."
+    : "Install Phantom, MetaMask or Rabby in this browser, unlock it, and reload. Wallets don't work inside in-app or phone browsers; use desktop Chrome.");
+  el.classList.remove("hidden");
+}
 
 async function ensureChain(side) {
   const want = net()[side];
