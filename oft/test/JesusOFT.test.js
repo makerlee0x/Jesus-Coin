@@ -158,6 +158,16 @@ describe("JESUS OFT pair", function () {
     expect(await oft.balanceOf(bob.address)).to.equal(amount);
   });
 
+  it("an unlimited (uint192 max) limit lets everything through, as wire.js sets by default", async function () {
+    const UNLIMITED = (1n << 192n) - 1n;
+    await adapter.setRateLimits([{ dstEid: RH_EID, limit: UNLIMITED, window: DAY }]);
+    await oft.setInboundRateLimits([{ dstEid: ETH_EID, limit: UNLIMITED, window: DAY }]);
+    await jesus.connect(alice).approve(await adapter.getAddress(), SUPPLY);
+    await bridge(alice, adapter, RH_EID, bob.address, SUPPLY / 2n);
+    await bridge(alice, adapter, RH_EID, bob.address, SUPPLY / 2n);
+    expect(await oft.balanceOf(bob.address)).to.equal(SUPPLY);
+  });
+
   it("only the owner can change limits or peers", async function () {
     await expect(adapter.connect(alice).setRateLimits([])).to.be.revertedWithCustomError(adapter, "OwnableUnauthorizedAccount");
     await expect(oft.connect(alice).setInboundRateLimits([])).to.be.revertedWithCustomError(oft, "OwnableUnauthorizedAccount");

@@ -20,9 +20,9 @@ The tests bridge the entire supply in one message and show the default adapter o
 
 ## Safety rails (`BridgeGuards`)
 
-- **Outbound rate limit** per destination chain and **inbound rate limit** per source chain (linear refill over a window). The inbound limit on the adapter caps how fast the Ethereum lockbox can be emptied, even if a bad message were verified. A chain with no limit set is blocked.
+- **Outbound rate limit** per destination chain and **inbound rate limit** per source chain (linear refill over a window). The inbound limit on the adapter caps how fast the Ethereum lockbox can be emptied, even if a bad message were verified. A chain with no limit set is blocked. `wire.js` sets the limits to unlimited unless `OUT_LIMIT` / `IN_LIMIT` are given, so they can be tightened later without a redeploy.
 - **Pause**: the owner or a separate `pauser` (e.g. a monitoring bot) can pause; only the owner can unpause. A paused or over-limit receive reverts inside `lzReceive`, so the message stays stored at the LayerZero endpoint and can be retried later. Nothing is lost.
-- **Owner** sets peers, limits and the pauser, and unpauses. **Delegate** sets DVN/executor config on the endpoint. Hand both to a multisig with `scripts/handoff.js`.
+- **Owner** sets peers, limits and the pauser, and unpauses. **Delegate** sets DVN/executor config on the endpoint. Both start as the deployer wallet; `scripts/handoff.js` moves them to a multisig (or any other address) later.
 
 ## Use
 
@@ -58,7 +58,7 @@ Deployments are written to `deployments/<network>.json`.
 ## Before mainnet
 
 - Set DVNs explicitly on both sides (at least two independent DVNs, e.g. LayerZero Labs + one more) with `endpoint.setConfig` from the delegate. The scripts leave LayerZero's defaults in place.
-- Hand ownership and delegate to a multisig on both chains.
-- Pick real rate limits (the script default is 10T JESUS per day each way).
+- The owner key can repoint peers and so control everything in the lockbox. Until it moves to a multisig, keep it on a hardware wallet and use it only for this.
+- Rate limits default to unlimited; set `OUT_LIMIT` / `IN_LIMIT` if you want a cap.
 - Bridge a small amount first. JESUS calls a PinkSale anti-bot hook on every transfer when enabled; it should not affect the adapter, but confirm with a real transfer.
 - Get an independent review of `BridgeGuards` and the overrides.
