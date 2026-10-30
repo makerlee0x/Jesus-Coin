@@ -49,7 +49,7 @@ const PROXY = "0x7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
   await page.fill("#amt", "1000000"); await page.click("#go4"); await waitText("r4t", "Sent");
   const T = new ethers.Contract(oft, O.abi, prov);
   console.log("oft balance after out:", ethers.formatEther(await T.balanceOf(acct)));
-  await page.selectOption("#dir", "back"); await page.click("#go4");
+  await page.selectOption("#dir", "back"); await page.fill("#amt", "990000"); await page.click("#go4");
   await page.waitForFunction(() => (document.getElementById("log").textContent.match(/JESUS done/g) || []).length >= 2, null, { timeout: 20000 });
   await page.waitForTimeout(2000);
   const raw = async (to, who) => ethers.formatEther(BigInt(await prov.send("eth_call", [{ to, data: new ethers.Interface(O.abi).encodeFunctionData("balanceOf", [who]) }, "latest"])));

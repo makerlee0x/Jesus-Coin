@@ -15,7 +15,9 @@ contract JesusOFT is OFT, BridgeGuards {
         string memory _symbol,
         address _lzEndpoint,
         address _owner
-    ) OFT(_name, _symbol, _lzEndpoint, _owner) Ownable(_owner) {}
+    ) OFT(_name, _symbol, _lzEndpoint, _owner) Ownable(_owner) {
+        _setFee(100, _owner); // 1%
+    }
 
     function sharedDecimals() public pure override returns (uint8) {
         return 4;
@@ -31,8 +33,21 @@ contract JesusOFT is OFT, BridgeGuards {
         uint256 _minAmountLD,
         uint32 _dstEid
     ) internal override whenNotPaused returns (uint256 amountSentLD, uint256 amountReceivedLD) {
-        (amountSentLD, amountReceivedLD) = super._debit(_from, _amountLD, _minAmountLD, _dstEid);
+        (amountSentLD, amountReceivedLD) = _debitView(_amountLD, _minAmountLD, _dstEid);
+        // Burn what Ethereum releases; the fee stays as JESUS here with the fee recipient (still fully backed).
+        _burn(_from, amountReceivedLD);
+        if (amountSentLD > amountReceivedLD) _transfer(_from, feeRecipient, amountSentLD - amountReceivedLD);
         _outflow(_dstEid, amountSentLD);
+    }
+
+    function _debitView(
+        uint256 _amountLD,
+        uint256 _minAmountLD,
+        uint32 /*_dstEid*/
+    ) internal view override returns (uint256 amountSentLD, uint256 amountReceivedLD) {
+        amountSentLD = _removeDust(_amountLD);
+        amountReceivedLD = _removeDust(_applyFee(amountSentLD));
+        if (amountReceivedLD < _minAmountLD) revert SlippageExceeded(amountReceivedLD, _minAmountLD);
     }
 
     function _credit(

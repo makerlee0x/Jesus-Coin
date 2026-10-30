@@ -41,6 +41,10 @@ describe("JESUS OFT pair", function () {
     await oft.setRateLimits(open(ETH_EID));
     await oft.setInboundRateLimits(open(ETH_EID));
 
+    // Existing tests check exact amounts, so they run fee-free; the fee has its own tests below.
+    await adapter.setFee(0, owner.address);
+    await oft.setFee(0, owner.address);
+
     await jesus.transfer(alice.address, SUPPLY);
   });
 
@@ -172,5 +176,57 @@ describe("JESUS OFT pair", function () {
     await expect(adapter.connect(alice).setRateLimits([])).to.be.revertedWithCustomError(adapter, "OwnableUnauthorizedAccount");
     await expect(oft.connect(alice).setInboundRateLimits([])).to.be.revertedWithCustomError(oft, "OwnableUnauthorizedAccount");
     await expect(oft.connect(alice).setPeer(ETH_EID, to32(alice.address))).to.be.revertedWithCustomError(oft, "OwnableUnauthorizedAccount");
+  });
+
+  describe("bridge fee", function () {
+    let fees;
+    beforeEach(async function () {
+      fees = (await ethers.getSigners())[5];
+      await adapter.setFee(100, fees.address);
+      await oft.setFee(100, fees.address);
+    });
+
+    it("deploys with 1% to the owner by default", async function () {
+      const fresh = await (await ethers.getContractFactory("JesusOFT")).deploy("Jesus Coin", "JESUS", await epRh.getAddress(), bob.address);
+      expect(await fresh.feeBps()).to.equal(100);
+      expect(await fresh.feeRecipient()).to.equal(bob.address);
+    });
+
+    it("takes 1% each way; locked JESUS always equals the Robinhood supply", async function () {
+      const amt = ethers.parseEther("777");
+      const p = await sendParams(RH_EID, bob.address, amt);
+      const q = await adapter.quoteOFT({ ...p, minAmountLD: 0 });
+      expect(q[2].amountReceivedLD).to.equal(ethers.parseEther("769.23"));
+
+      await jesus.connect(alice).approve(await adapter.getAddress(), amt);
+      // minAmountLD = full amount must fail (that is what the old page sent); the quoted amount works.
+      await expect(bridge(alice, adapter, RH_EID, bob.address, amt)).to.be.revertedWithCustomError(adapter, "SlippageExceeded");
+      p.minAmountLD = q[2].amountReceivedLD;
+      p.amountLD = amt;
+      const fee = await adapter.quoteSend(p, false);
+      await adapter.connect(alice).send(p, { nativeFee: fee.nativeFee, lzTokenFee: 0 }, alice.address, { value: fee.nativeFee });
+
+      expect(await jesus.balanceOf(fees.address)).to.equal(ethers.parseEther("7.77"));
+      expect(await oft.balanceOf(bob.address)).to.equal(ethers.parseEther("769.23"));
+      expect(await jesus.balanceOf(await adapter.getAddress())).to.equal(await oft.totalSupply());
+
+      const back = await sendParams(ETH_EID, alice.address, ethers.parseEther("769.23"));
+      back.minAmountLD = (await oft.quoteOFT({ ...back, minAmountLD: 0 }))[2].amountReceivedLD;
+      const f2 = await oft.quoteSend(back, false);
+      await oft.connect(bob).send(back, { nativeFee: f2.nativeFee, lzTokenFee: 0 }, bob.address, { value: f2.nativeFee });
+
+      expect(await oft.balanceOf(fees.address)).to.equal(ethers.parseEther("7.6923"));
+      expect(await oft.balanceOf(bob.address)).to.equal(0);
+      expect(await jesus.balanceOf(await adapter.getAddress())).to.equal(await oft.totalSupply());
+      expect(await oft.totalSupply()).to.equal(ethers.parseEther("7.6923"));
+    });
+
+    it("fee is capped at 5% and only the owner can change it", async function () {
+      await expect(adapter.setFee(501, fees.address)).to.be.revertedWithCustomError(adapter, "FeeTooHigh");
+      await expect(oft.setFee(100, ethers.ZeroAddress)).to.be.revertedWithCustomError(oft, "ZeroFeeRecipient");
+      await expect(adapter.connect(alice).setFee(0, alice.address)).to.be.revertedWithCustomError(adapter, "OwnableUnauthorizedAccount");
+      await adapter.setFee(500, fees.address);
+      expect(await adapter.feeBps()).to.equal(500);
+    });
   });
 });

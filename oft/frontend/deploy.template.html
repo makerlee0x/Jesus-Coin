@@ -92,7 +92,7 @@ dialog img{width:24px;height:24px}
 
 <section id="c3" class="card">
 <div class="head"><h2>3. Connect the two sides</h2><span class="pill" id="b3"></span></div>
-<p>Tells each side the other's address and switches traffic on (no daily limit). Up to three confirmations per side; steps already done are skipped.</p>
+<p>Tells each side the other's address, switches traffic on (no daily limit) and, on mainnet, sets the LayerZero Labs verifier (LayerZero's default for a new route is a placeholder that blocks every transfer). Up to five confirmations per side; steps already done are skipped.</p>
 <div class="row"><span><strong>Ethereum adapter</strong> → Robinhood token</span><button id="go3a" class="btn" type="button">Connect on Ethereum</button></div>
 <div class="row"><span><strong>Robinhood token</strong> → Ethereum adapter</span><button id="go3b" class="btn" type="button">Connect on Robinhood</button></div>
 <div class="row" id="dvnRow"><span><strong>Security:</strong> LayerZero Labs verifier (DVN) on both directions. Two confirmations per side.</span><span style="display:flex;gap:8px;flex-wrap:wrap"><button id="dvnA" class="btn" type="button">Set on Ethereum</button><button id="dvnB" class="btn" type="button">Set on Robinhood</button></span></div>
@@ -100,7 +100,7 @@ dialog img{width:24px;height:24px}
 
 <section id="c4" class="card">
 <div class="head"><h2>4. Test a transfer</h2><span class="pill" id="b4"></span></div>
-<p>Send a small amount to Robinhood. Delivery takes a few minutes; follow it on LayerZero Scan. Then send it back.</p>
+<p>Send a small amount to Robinhood. Delivery takes a few minutes; follow it on LayerZero Scan. Then send it back. The bridge fee (1% at deploy) goes to the fee wallet on the sending chain; the owner pays it too.</p>
 <div class="grid2">
 <div class="field"><label for="dir">Direction</label><select id="dir"><option value="out">Ethereum → Robinhood</option><option value="back">Robinhood → Ethereum</option></select></div>
 <div class="field"><label for="amt">Amount (JESUS)</label><input id="amt" value="1000000" inputmode="decimal"></div>
@@ -330,7 +330,15 @@ async function wire(side) {
   if ((await c.peers(peerEid)).toLowerCase() !== want.toLowerCase()) await send("Set peer", side, c.setPeer(peerEid, want));
   if ((await c.rateLimits(peerEid)).limit === 0n) await send("Open outbound", side, c.setRateLimits([{ dstEid: peerEid, limit: UNLIMITED, window: DAY }]));
   if ((await c.inboundRateLimits(peerEid)).limit === 0n) await send("Open inbound", side, c.setInboundRateLimits([{ dstEid: peerEid, limit: UNLIMITED, window: DAY }]));
+  await setDvns(side);
   S[side === "eth" ? "wiredEth" : "wiredRh"] = true; store.save();
+}
+// Amount that arrives after the bridge fee and dust; used as minAmountLD so the send can't take more than quoted.
+async function received(c, p) {
+  const [, , r] = await c.quoteOFT({ ...p, minAmountLD: 0n });
+  let bps = 0n; try { bps = await c.feeBps(); } catch {}
+  log("Sending " + ethers.formatEther(r.amountSentLD) + " JESUS, " + ethers.formatEther(r.amountReceivedLD) + " arrives" + (bps ? " (" + Number(bps) / 100 + "% bridge fee " + ethers.formatEther(r.amountSentLD - r.amountReceivedLD) + ")" : ""));
+  return r.amountReceivedLD;
 }
 async function bridge() {
   const out = $("dir").value === "out";
@@ -343,7 +351,8 @@ async function bridge() {
     const t = new ethers.Contract(ethToken(), C.MockJesus.abi, s);
     if ((await t.allowance(account, S.adapter)) < amount) await send("Approve JESUS", side, t.approve(S.adapter, amount));
   }
-  const p = { dstEid: out ? net().rh.eid : net().eth.eid, to: ethers.zeroPadValue(account, 32), amountLD: amount, minAmountLD: amount - (amount % 10n ** 14n), extraOptions: OPTIONS, composeMsg: "0x", oftCmd: "0x" };
+  const p = { dstEid: out ? net().rh.eid : net().eth.eid, to: ethers.zeroPadValue(account, 32), amountLD: amount, minAmountLD: 0n, extraOptions: OPTIONS, composeMsg: "0x", oftCmd: "0x" };
+  p.minAmountLD = await received(c, p);
   let fee;
   try { fee = await c.quoteSend(p, false); }
   catch (e) { log("Fee quote failed: " + errMsg(e) + ". Running diagnostics…", "err"); await diagnose(); throw new Error("can't quote the LayerZero fee, see the diagnostics above"); }
@@ -369,7 +378,7 @@ const ULN_T = "tuple(uint64 confirmations, uint8 requiredDVNCount, uint8 optiona
 // block confirmations (which LayerZero already pairs up across the two chains).
 async function setDvns(side) {
   const n = net()[side];
-  if (!n.dvn) { log("No verifier change needed on " + n.name); return; }
+  if (!n.dvn) return; // testnet / local: LayerZero's defaults work
   const s = await ensureChain(side);
   const me = side === "eth" ? S.adapter : S.oft, eid = side === "eth" ? net().rh.eid : net().eth.eid;
   const c = new ethers.Contract(me, C[side === "eth" ? "JesusBridge" : "JesusOFT"].abi, s);
@@ -422,7 +431,8 @@ async function diagnose() {
     } catch (e) { say("DVN config unreadable: " + errMsg(e), true); }
   }
   const amount = ethers.parseEther(String($("amt").value).replace(/,/g, "").trim() || "1");
-  const p = { dstEid, to: ethers.zeroPadValue(account || me, 32), amountLD: amount, minAmountLD: amount - (amount % 10n ** 14n), extraOptions: OPTIONS, composeMsg: "0x", oftCmd: "0x" };
+  const p = { dstEid, to: ethers.zeroPadValue(account || me, 32), amountLD: amount, minAmountLD: 0n, extraOptions: OPTIONS, composeMsg: "0x", oftCmd: "0x" };
+  try { p.minAmountLD = await received(c, p); } catch {}
   try { const f = await c.quoteSend(p, false); say("fee quote OK: " + ethers.formatEther(f.nativeFee) + " ETH"); }
   catch (e) {
     const data = e.data || (e.info && e.info.error && e.info.error.data) || (e.error && e.error.data);
