@@ -197,7 +197,13 @@ function txLink(hash, side) {
   d.innerHTML = ex ? `tx <a target="_blank" rel="noopener" href="${ex}/tx/${hash}">${hash.slice(0, 18)}…</a>` : `tx ${hash}`;
   const l = $("log"); if (l.firstChild && l.firstChild.className === "hint") l.innerHTML = ""; l.prepend(d);
 }
-const errMsg = (e) => (e && (e.shortMessage || e.reason || (e.info && e.info.error && e.info.error.message) || e.message)) || String(e);
+// ethers wraps wallet errors it doesn't recognise as "could not coalesce error"; dig out the wallet's own text.
+const errMsg = (e) => {
+  if (!e) return String(e);
+  const inner = (e.error && e.error.message) || (e.info && e.info.error && e.info.error.message) || (e.info && e.info.error && JSON.stringify(e.info.error));
+  const top = e.shortMessage || e.reason || e.message || String(e);
+  return inner && !top.includes(inner) ? top + " (wallet says: " + inner + ")" : top;
+};
 
 // ---- wallet (EIP-6963 picker, falls back to window.ethereum) ----
 const wallets = [];
