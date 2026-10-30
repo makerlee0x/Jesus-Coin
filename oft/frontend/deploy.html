@@ -159,7 +159,7 @@ const NETS = {
   },
   main: {
     eth: { chainId: 1, name: "Ethereum", eid: 30101, endpoint: "0x1a44076050125825900e736c501f859c50fE728c", dvn: "0x589dEDbD617e0CBcB916A9223F4d1300c294236b", deadDvn: "0x747C741496a507E4B404b50463e691A8d692f6Ac", explorer: "https://etherscan.io", token: "0xba386A4Ca26B85FD057ab1Ef86e3DC7BdeB5ce70" },
-    rh:  { chainId: 4663, name: "Robinhood Chain", eid: 30416, endpoint: "0x6F475642a6e85809B1c36Fa62763669b1b48DD5B", dvn: "0x282b3386571f7f794450d5789911a9804FA346b4", deadDvn: "0x6788f52439ACA6BFF597d3eeC2DC9a44B8FEE842", explorer: "" },
+    rh:  { chainId: 4663, name: "Robinhood Chain", eid: 30416, endpoint: "0x6F475642a6e85809B1c36Fa62763669b1b48DD5B", dvn: "0xd01ae6905d48315f7bE10C7330aeCF8360Ef5b12", deadDvn: "0x6788f52439ACA6BFF597d3eeC2DC9a44B8FEE842", explorer: "" },
     scan: "https://layerzeroscan.com/tx/",
   },
 };
@@ -373,6 +373,8 @@ const EP_ABI = [
   "function setConfig(address,address,tuple(uint32 eid, uint32 configType, bytes config)[])",
 ];
 const ULN_T = "tuple(uint64 confirmations, uint8 requiredDVNCount, uint8 optionalDVNCount, uint8 optionalDVNThreshold, address[] requiredDVNs, address[] optionalDVNs)";
+// DVN addresses: LayerZero-Labs/lz-address-book (LayerZeroV2DVN<Chain>Mainnet.DVN_LAYERZERO_LABS). Not the
+// lz-evm-sdk-v2 "DVN" deployment, which on Robinhood is a different contract that LayerZero Labs doesn't run.
 // LayerZero ships new pathways with a placeholder "dead" DVN, so quotes revert until the OApp picks real verifiers.
 // Sets the LayerZero Labs DVN as the single required verifier for sending and receiving, keeping the default
 // block confirmations (which LayerZero already pairs up across the two chains).
