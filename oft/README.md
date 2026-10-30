@@ -4,7 +4,7 @@ LayerZero V2 bridge for JESUS (`0xba386A4Ca26B85FD057ab1Ef86e3DC7BdeB5ce70` on E
 
 | Contract | Chain | What it does |
 |---|---|---|
-| `JesusOFTAdapter` | Ethereum | Locks JESUS when it leaves Ethereum, releases it when it comes back |
+| `JesusBridge` | Ethereum | Locks JESUS when it leaves Ethereum, releases it when it comes back |
 | `JesusOFT` | Robinhood Chain | ERC-20 "JESUS" (18 decimals), minted on arrival, burned on departure |
 
 The Ethereum token is not changed and needs no permission (its ownership is renounced). JESUS on Robinhood Chain can never exceed what is locked in the adapter.

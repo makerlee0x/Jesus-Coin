@@ -299,7 +299,7 @@ async function step1() {
     S.token = await deploy("Test JESUS token", "eth", "MockJesus", [], s); store.save(); render();
   }
   await checkEndpoint("eth", s);
-  S.adapter = await deploy("Adapter", "eth", "JesusOFTAdapter", [ethToken(), ep("eth"), account], s);
+  S.adapter = await deploy("Adapter", "eth", "JesusBridge", [ethToken(), ep("eth"), account], s);
   store.save();
 }
 async function step2() {
@@ -322,7 +322,7 @@ async function wire(side) {
   const s = await ensureChain(side);
   const me = side === "eth" ? S.adapter : S.oft, peer = side === "eth" ? S.oft : S.adapter;
   const peerEid = side === "eth" ? net().rh.eid : net().eth.eid;
-  const c = new ethers.Contract(me, C[side === "eth" ? "JesusOFTAdapter" : "JesusOFT"].abi, s);
+  const c = new ethers.Contract(me, C[side === "eth" ? "JesusBridge" : "JesusOFT"].abi, s);
   const owner = await c.owner();
   if (owner.toLowerCase() !== account.toLowerCase()) throw new Error("Connected wallet isn't the owner (" + owner + ")");
   const want = ethers.zeroPadValue(peer, 32);
@@ -337,7 +337,7 @@ async function bridge() {
   const s = await ensureChain(side);
   const amount = ethers.parseEther(String($("amt").value).replace(/,/g, "").trim() || "0");
   if (amount === 0n) throw new Error("Enter an amount");
-  const c = new ethers.Contract(out ? S.adapter : S.oft, C[out ? "JesusOFTAdapter" : "JesusOFT"].abi, s);
+  const c = new ethers.Contract(out ? S.adapter : S.oft, C[out ? "JesusBridge" : "JesusOFT"].abi, s);
   if (out) {
     const t = new ethers.Contract(ethToken(), C.MockJesus.abi, s);
     if ((await t.allowance(account, S.adapter)) < amount) await send("Approve JESUS", side, t.approve(S.adapter, amount));

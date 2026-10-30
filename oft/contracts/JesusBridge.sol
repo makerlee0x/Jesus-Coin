@@ -12,7 +12,7 @@ import { BridgeGuards } from "./BridgeGuards.sol";
 /// @dev sharedDecimals = 4: OFT carries amounts as uint64 in shared decimals. With the LayerZero default of 6,
 ///      777.8T JESUS is 7.8e20 > uint64.max (1.8e19), so large sends would revert. At 4 the cap per message is
 ///      ~1.84 quadrillion JESUS, above the whole supply. Dust below 0.0001 JESUS stays with the sender.
-contract JesusOFTAdapter is OFTAdapter, BridgeGuards {
+contract JesusBridge is OFTAdapter, BridgeGuards {
     constructor(
         address _token,
         address _lzEndpoint,

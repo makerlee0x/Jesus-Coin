@@ -22,7 +22,7 @@ async function main() {
       token = await mock.getAddress();
       console.log(`MockJesus test token: ${token}`);
     }
-    const c = await (await hre.ethers.getContractFactory("JesusOFTAdapter")).deploy(token, cfg.endpoint, deployer.address);
+    const c = await (await hre.ethers.getContractFactory("JesusBridge")).deploy(token, cfg.endpoint, deployer.address);
     await c.waitForDeployment();
     out.token = token;
     out.address = await c.getAddress();
@@ -34,7 +34,7 @@ async function main() {
   }
 
   save(name, out);
-  console.log(`${cfg.side === "adapter" ? "JesusOFTAdapter" : "JesusOFT"}: ${out.address}`);
+  console.log(`${cfg.side === "adapter" ? "JesusBridge" : "JesusOFT"}: ${out.address}`);
 }
 
 main().catch((e) => {

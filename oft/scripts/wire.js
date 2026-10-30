@@ -11,7 +11,7 @@ async function main() {
   const me = load(name);
   const peer = load(cfg.peer);
 
-  const contract = await hre.ethers.getContractAt(me.side === "adapter" ? "JesusOFTAdapter" : "JesusOFT", me.address);
+  const contract = await hre.ethers.getContractAt(me.side === "adapter" ? "JesusBridge" : "JesusOFT", me.address);
   const window = BigInt(process.env.WINDOW_SECONDS || 86400);
   const UNLIMITED = (1n << 192n) - 1n; // uint192 max
   const outLimit = process.env.OUT_LIMIT ? hre.ethers.parseEther(process.env.OUT_LIMIT) : UNLIMITED;

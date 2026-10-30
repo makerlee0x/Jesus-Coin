@@ -6,9 +6,9 @@ import { OFT } from "@layerzerolabs/oft-evm/contracts/OFT.sol";
 import { BridgeGuards } from "./BridgeGuards.sol";
 
 /// @title JESUS OFT (Robinhood Chain side, or any other EVM chain)
-/// @notice Minted when JESUS is locked in `JesusOFTAdapter` on Ethereum, burned when sent back. Total supply on
+/// @notice Minted when JESUS is locked in `JesusBridge` on Ethereum, burned when sent back. Total supply on
 ///         this chain can never exceed what is locked on Ethereum. 18 decimals, same as Ethereum JESUS.
-/// @dev sharedDecimals must match the adapter (4). See JesusOFTAdapter for why.
+/// @dev sharedDecimals must match the adapter (4). See JesusBridge for why.
 contract JesusOFT is OFT, BridgeGuards {
     constructor(
         string memory _name,

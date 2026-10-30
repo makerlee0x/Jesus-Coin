@@ -8,7 +8,7 @@ async function main() {
   const safe = process.env.SAFE;
   if (!safe || !hre.ethers.isAddress(safe)) throw new Error("Set SAFE to the multisig address");
   const me = load(hre.network.name);
-  const contract = await hre.ethers.getContractAt(me.side === "adapter" ? "JesusOFTAdapter" : "JesusOFT", me.address);
+  const contract = await hre.ethers.getContractAt(me.side === "adapter" ? "JesusBridge" : "JesusOFT", me.address);
   console.log(`setDelegate(${safe})`);
   await (await contract.setDelegate(safe)).wait();
   console.log(`transferOwnership(${safe})`);

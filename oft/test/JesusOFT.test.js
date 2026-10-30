@@ -24,7 +24,7 @@ describe("JESUS OFT pair", function () {
     epRh = await Endpoint.deploy(RH_EID);
 
     jesus = await (await ethers.getContractFactory("MockJesus")).deploy();
-    adapter = await (await ethers.getContractFactory("JesusOFTAdapter")).deploy(
+    adapter = await (await ethers.getContractFactory("JesusBridge")).deploy(
       await jesus.getAddress(), await epEth.getAddress(), owner.address);
     oft = await (await ethers.getContractFactory("JesusOFT")).deploy(
       "Jesus Coin", "JESUS", await epRh.getAddress(), owner.address);

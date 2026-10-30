@@ -15,7 +15,7 @@ async function main() {
   const amount = hre.ethers.parseEther(process.env.AMOUNT || "1000000");
   const to = process.env.TO || signer.address;
 
-  const contract = await hre.ethers.getContractAt(me.side === "adapter" ? "JesusOFTAdapter" : "JesusOFT", me.address);
+  const contract = await hre.ethers.getContractAt(me.side === "adapter" ? "JesusBridge" : "JesusOFT", me.address);
   if (me.side === "adapter") {
     const token = await hre.ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", me.token);
     if ((await token.allowance(signer.address, me.address)) < amount) {

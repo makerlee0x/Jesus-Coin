@@ -9,7 +9,7 @@ const art = (p) => {
   return { abi: a.abi, bytecode: a.bytecode };
 };
 const contracts = {
-  JesusOFTAdapter: art("JesusOFTAdapter.sol/JesusOFTAdapter.json"),
+  JesusBridge: art("JesusBridge.sol/JesusBridge.json"),
   JesusOFT: art("JesusOFT.sol/JesusOFT.json"),
   // Test token for testnet; its ERC-20 ABI is also used for approve/allowance/balanceOf on real JESUS.
   MockJesus: art("mocks/Mocks.sol/MockJesus.json"),
