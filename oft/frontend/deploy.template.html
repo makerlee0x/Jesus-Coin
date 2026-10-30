@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JESUS bridge deploy</title>
+<style>
+:root{--ink:#1c1c1a;--muted:#4a4a45;--soft:#5c5c56;--line:#d6d6d0;--dash:#8a8a83;--bg:#f4f4f2;--card:#ffffff;--bad:#9b1c1c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink)}
+a{color:var(--ink)}
+.wrap{max-width:1200px;margin:0 auto;padding:0 24px}
+header{background:var(--card);border-bottom:1px solid var(--line)}
+header .wrap{padding:16px 24px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between}
+.btn{min-height:44px;padding:0 16px;border:1px solid var(--ink);border-radius:8px;background:var(--card);color:var(--ink);font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.btn.primary{background:var(--ink);color:#fff}
+.btn:disabled{border-color:var(--dash);color:var(--soft);background:var(--card);cursor:not-allowed}
+.btn.primary:disabled{background:#c9c9c3;color:#55554f;border-color:#c9c9c3}
+.seg{display:flex;border:1px solid var(--ink);border-radius:8px;overflow:hidden}
+.seg button{min-height:44px;padding:0 16px;border:0;font:inherit;font-size:14px;cursor:pointer;background:var(--card);color:var(--soft)}
+.seg button.on{background:var(--ink);color:#fff;font-weight:600}
+h1{margin:0;font-size:32px;line-height:1.2}
+.lead{margin:8px 0 24px;font-size:16px;color:var(--muted);max-width:760px}
+.cols{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;padding-bottom:64px}
+main{flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:16px}
+aside{flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px;display:flex;flex-direction:column;gap:14px}
+.card.now{border:2px solid var(--ink)}
+.card h2{margin:0;font-size:20px}
+.card p{margin:0;font-size:14px;color:var(--muted)}
+.head{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:baseline}
+.pill{font-size:13px;font-weight:700;padding:4px 10px;border:1px solid var(--ink);border-radius:999px}
+.pill.wait{border-style:dashed;border-color:var(--dash);color:var(--soft)}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:12px;background:var(--bg);border-radius:8px;font-size:14px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 24px}
+.field{display:flex;flex-direction:column;gap:6px;font-size:14px}
+.field label{color:var(--muted)}
+.hint{font-size:13px;color:var(--soft)}
+input,select{min-height:44px;padding:0 12px;border:1px solid #b8b8b0;border-radius:8px;font:inherit;background:var(--card);color:var(--ink);width:100%}
+code{font-family:ui-monospace,Menlo,monospace;font-size:13px;word-break:break-all}
+.side{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.side h2{margin:0;font-size:16px}
+.side .lbl{color:var(--soft);font-size:13px}
+.side.warn{border:2px solid var(--ink)}
+.side p{font-size:14px;color:#3a3a36;margin:0}
+#log{font-family:ui-monospace,Menlo,monospace;font-size:12px;max-height:280px;overflow:auto;display:flex;flex-direction:column;gap:6px}
+#log div{word-break:break-all}
+#log .err{color:var(--bad)}
+.err{color:var(--bad);font-size:14px}
+.banner{padding:10px 16px;font-size:14px;text-align:center;background:var(--ink);color:#fff}
+.banner.main{background:var(--bad)}
+.hidden{display:none!important}
+dialog{border:1px solid var(--line);border-radius:12px;padding:20px;max-width:360px;width:90%}
+dialog .wl{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+dialog .wl button{display:flex;gap:10px;align-items:center}
+dialog img{width:24px;height:24px}
+@media (max-width:700px){.grid2{grid-template-columns:minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<div id="banner" class="banner">TESTNET · Sepolia ⇄ Robinhood testnet. Safe to experiment.</div>
+<header><div class="wrap">
+<div><div style="font-size:20px;font-weight:700">JESUS Bridge</div><div style="font-size:13px;color:var(--soft)">Deploy console · Ethereum ⇄ Robinhood Chain</div></div>
+<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center">
+<div class="seg" role="group" aria-label="Network mode"><button id="modeTest" class="on" type="button">Testnet</button><button id="modeMain" type="button">Mainnet</button></div>
+<button id="wallet" class="btn" type="button">Connect wallet</button>
+</div>
+</div></header>
+
+<div class="wrap" style="padding-top:32px">
+<div id="nowallet" class="row hidden" role="alert" style="margin-bottom:20px;border:2px solid var(--bad);background:#fff;display:block;line-height:1.5"></div>
+<h1>Deploy the JESUS bridge</h1>
+<p class="lead">Four steps. Each button asks your wallet to confirm a transaction. Do the whole thing on testnet first. Your progress is saved in this browser, so you can close the page and come back.</p>
+
+<div class="cols">
+<main>
+<section id="c1" class="card">
+<div class="head"><h2>1. Deploy the Ethereum adapter</h2><span class="pill" id="b1"></span></div>
+<p>The vault on <span class="ethName"></span>. JESUS sent to Robinhood is locked here and released when it comes back. <span id="mockNote">On testnet a test JESUS token (777.8T supply, sent to you) is created first.</span></p>
+<div class="row"><span>Token: <code id="tokAddr"></code></span><span>Owner: your connected wallet</span></div>
+<div class="row"><span id="g1">Deploys on <strong class="ethName"></strong></span><button id="go1" class="btn primary" type="button">Deploy adapter</button></div>
+<div class="row"><span>Adapter</span><code id="a1">Not deployed</code></div>
+</section>
+
+<section id="c2" class="card">
+<div class="head"><h2>2. Deploy JESUS on Robinhood Chain</h2><span class="pill" id="b2"></span></div>
+<p>The JESUS token on <span class="rhName"></span>. Zero supply at first; it only mints when JESUS is locked on Ethereum.</p>
+<div class="field"><label for="salt">Vanity salt (optional)</label><input id="salt" placeholder="0x… from scripts/mine-salt.js; leave empty for a normal address" spellcheck="false"><span class="hint" id="predicted">The salt only works for the wallet it was mined for.</span></div>
+<div class="row"><span>Deploys on <strong class="rhName"></strong></span><button id="go2" class="btn primary" type="button">Deploy token</button></div>
+<div class="row"><span>Robinhood token</span><code id="a2">Not deployed</code></div>
+</section>
+
+<section id="c3" class="card">
+<div class="head"><h2>3. Connect the two sides</h2><span class="pill" id="b3"></span></div>
+<p>Tells each side the other's address, switches traffic on (no daily limit) and, on mainnet, sets two verifiers, LayerZero Labs and Nethermind (LayerZero's default for a new route is a placeholder that blocks every transfer, and LayerZero Labs won't verify with fewer than two). Up to five confirmations per side; steps already done are skipped.</p>
+<div class="row"><span><strong>Ethereum adapter</strong> → Robinhood token</span><button id="go3a" class="btn" type="button">Connect on Ethereum</button></div>
+<div class="row"><span><strong>Robinhood token</strong> → Ethereum adapter</span><button id="go3b" class="btn" type="button">Connect on Robinhood</button></div>
+<div class="row" id="dvnRow"><span><strong>Security:</strong> two verifiers (LayerZero Labs + Nethermind) on both directions; LayerZero requires at least two on mainnet. Two confirmations per side.</span><span style="display:flex;gap:8px;flex-wrap:wrap"><button id="dvnA" class="btn" type="button">Set on Ethereum</button><button id="dvnB" class="btn" type="button">Set on Robinhood</button></span></div>
+</section>
+
+<section id="c4" class="card">
+<div class="head"><h2>4. Test a transfer</h2><span class="pill" id="b4"></span></div>
+<p>Send a small amount to Robinhood. Delivery takes a few minutes; follow it on LayerZero Scan. Then send it back. The bridge fee (1% at deploy) goes to the fee wallet on the sending chain; the owner pays it too.</p>
+<div class="grid2">
+<div class="field"><label for="dir">Direction</label><select id="dir"><option value="out">Ethereum → Robinhood</option><option value="back">Robinhood → Ethereum</option></select></div>
+<div class="field"><label for="amt">Amount (JESUS)</label><input id="amt" value="1000000" inputmode="decimal"></div>
+</div>
+<div class="row"><span id="bal">Balance: connect and refresh</span><span style="display:flex;gap:8px;flex-wrap:wrap"><button id="refresh" class="btn" type="button">Refresh balance</button><button id="diag" class="btn" type="button">Diagnose</button><button id="skip" class="btn" type="button">Skip stuck transfer</button><button id="go4" class="btn primary" type="button">Bridge</button></span></div>
+<div class="row hidden" id="r4"><span id="r4t"></span></div>
+</section>
+</main>
+
+<aside aria-label="Deployment summary">
+<section class="side">
+<h2>Your deployment</h2>
+<div><div class="lbl">Wallet</div><code id="sAcct">Not connected</code></div>
+<div><div class="lbl">Ethereum adapter</div><code id="s1">Not deployed</code></div>
+<div><div class="lbl">Robinhood token</div><code id="s2">Not deployed</code></div>
+<button id="dl" class="btn" type="button">Download addresses (JSON)</button>
+<details><summary class="hint" style="cursor:pointer">Edit addresses / settings</summary>
+<div style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
+<div class="field"><label for="eToken">Ethereum token</label><input id="eToken" spellcheck="false"></div>
+<div class="field"><label for="eAdapter">Ethereum adapter</label><input id="eAdapter" spellcheck="false"></div>
+<div class="field"><label for="eOft">Robinhood token</label><input id="eOft" spellcheck="false"></div>
+<div class="field"><label for="eEpEth">LayerZero endpoint, Ethereum side (blank = default)</label><input id="eEpEth" spellcheck="false"></div>
+<div class="field"><label for="eEpRh">LayerZero endpoint, Robinhood side (blank = default)</label><input id="eEpRh" spellcheck="false"></div>
+<div class="field"><label for="eRpc">Robinhood RPC URL (only if your wallet asks to add the network)</label><input id="eRpc" spellcheck="false"></div>
+<button id="saveEdit" class="btn" type="button">Save</button>
+<button id="clear" class="btn" type="button">Forget this mode's deployment</button>
+</div></details>
+</section>
+<section class="side warn">
+<h2>Keep this wallet safe</h2>
+<p>The wallet you deploy from owns the bridge. Whoever holds its key can redirect it and take every JESUS locked on Ethereum. Use a hardware wallet and nothing else on it.</p>
+</section>
+<section class="side">
+<h2>Activity</h2>
+<div id="log"><div class="hint">Nothing yet.</div></div>
+</section>
+</aside>
+</div>
+</div>
+
+<dialog id="pick"><strong>Choose a wallet</strong><div class="wl" id="wl"></div><button class="btn" type="button" style="margin-top:12px" onclick="this.closest('dialog').close()">Cancel</button></dialog>
+
+<script>/*__ETHERS__*/</script>
+<script>
+const C = /*__CONTRACTS__*/;
+const { ethers } = window;
+const FACTORY = "0x4e59b44847b379578588920cA78FbF26c0B4956C";
+const UNLIMITED = (1n << 192n) - 1n;
+const DAY = 86400;
+const OPTIONS = ethers.solidityPacked(["uint16","uint8","uint16","uint8","uint128"], [3,1,17,1,200000]);
+const NETS = {
+  test: {
+    eth: { chainId: 11155111, name: "Sepolia", eid: 40161, endpoint: "0x6EDCE65403992e310A62460808c4b910D972f10f", explorer: "https://sepolia.etherscan.io", token: "" },
+    rh:  { chainId: 46630, name: "Robinhood testnet", eid: 40451, endpoint: "0x3aCAAf60502791D199a5a5F0B173D78229eBFe32", explorer: "https://explorer.testnet.chain.robinhood.com" },
+    scan: "https://testnet.layerzeroscan.com/tx/",
+  },
+  main: {
+    eth: { chainId: 1, name: "Ethereum", eid: 30101, endpoint: "0x1a44076050125825900e736c501f859c50fE728c", dvns: ["0x589dEDbD617e0CBcB916A9223F4d1300c294236b", "0xa59BA433ac34D2927232918Ef5B2eaAfcF130BA5"], deadDvn: "0x747C741496a507E4B404b50463e691A8d692f6Ac", explorer: "https://etherscan.io", token: "0xba386A4Ca26B85FD057ab1Ef86e3DC7BdeB5ce70" },
+    rh:  { chainId: 4663, name: "Robinhood Chain", eid: 30416, endpoint: "0x6F475642a6e85809B1c36Fa62763669b1b48DD5B", dvns: ["0xd01ae6905d48315f7bE10C7330aeCF8360Ef5b12", "0x0Ffe02DF012299A370D5dd69298A5826EAcaFdF8"], deadDvn: "0x6788f52439ACA6BFF597d3eeC2DC9a44B8FEE842", explorer: "" },
+    scan: "https://layerzeroscan.com/tx/",
+  },
+};
+// ?dev=1&epEth=0x..&epRh=0x.. : both sides on the wallet's current chain (local testing only)
+const Q = new URLSearchParams(location.search);
+const DEV = Q.get("dev") === "1";
+if (DEV) { NETS.test.eth = { ...NETS.test.eth, name: "Local (eth side)", eid: 1, endpoint: Q.get("epEth") }; NETS.test.rh = { ...NETS.test.rh, name: "Local (rh side)", eid: 2, endpoint: Q.get("epRh") }; }
+
+const $ = (id) => document.getElementById(id);
+let mode = "test", eip1193 = null, account = null, busy = false, S = {};
+const store = {
+  load() { try { S = JSON.parse(localStorage.getItem("jesus-bridge-" + mode) || "{}"); } catch { S = {}; } },
+  save() { try { localStorage.setItem("jesus-bridge-" + mode, JSON.stringify(S)); } catch {} },
+};
+const net = () => NETS[mode];
+const ethToken = () => net().eth.token || S.token || "";
+// LayerZero endpoint per side; overridable under "Edit addresses / settings".
+const ep = (side) => (side === "eth" ? S.epEth : S.epRh) || net()[side].endpoint;
+async function checkEndpoint(side, s) {
+  const n = net()[side], a = ep(side);
+  if ((await s.provider.getCode(a)) === "0x") {
+    const where = n.explorer ? ` (check ${n.explorer}/address/${a})` : "";
+    throw new Error(`No LayerZero endpoint at ${a} on ${n.name}${where}. If LayerZero lists a different EndpointV2 address for this chain, enter it under "Edit addresses / settings".`);
+  }
+}
+
+function log(msg, cls) {
+  const l = $("log"); if (l.firstChild && l.firstChild.className === "hint") l.innerHTML = "";
+  const d = document.createElement("div"); if (cls) d.className = cls;
+  d.textContent = new Date().toLocaleTimeString() + "  " + msg; l.prepend(d);
+}
+function txLink(hash, side) {
+  const ex = net()[side].explorer;
+  const d = document.createElement("div");
+  d.innerHTML = ex ? `tx <a target="_blank" rel="noopener" href="${ex}/tx/${hash}">${hash.slice(0, 18)}…</a>` : `tx ${hash}`;
+  const l = $("log"); if (l.firstChild && l.firstChild.className === "hint") l.innerHTML = ""; l.prepend(d);
+}
+// ethers wraps wallet errors it doesn't recognise as "could not coalesce error"; dig out the wallet's own text.
+const errMsg = (e) => {
+  if (!e) return String(e);
+  const inner = (e.error && e.error.message) || (e.info && e.info.error && e.info.error.message) || (e.info && e.info.error && JSON.stringify(e.info.error));
+  const top = e.shortMessage || e.reason || e.message || String(e);
+  return inner && !top.includes(inner) ? top + " (wallet says: " + inner + ")" : top;
+};
+
+// ---- wallet (EIP-6963 picker, falls back to window.ethereum) ----
+const wallets = [];
+window.addEventListener("eip6963:announceProvider", (ev) => { if (!wallets.find((w) => w.info.uuid === ev.detail.info.uuid)) wallets.push(ev.detail); });
+window.dispatchEvent(new Event("eip6963:requestProvider"));
+
+async function connect() {
+  window.dispatchEvent(new Event("eip6963:requestProvider"));
+  await new Promise((r) => setTimeout(r, 300));
+  if (account) { account = null; eip1193 = null; render(); return; }
+  if (wallets.length > 1) {
+    const wl = $("wl"); wl.innerHTML = "";
+    wallets.forEach((w) => {
+      const b = document.createElement("button"); b.className = "btn"; b.type = "button";
+      const img = document.createElement("img"); img.src = w.info.icon; img.alt = "";
+      b.append(img, document.createTextNode(w.info.name));
+      b.onclick = () => { $("pick").close(); useWallet(w.provider); };
+      wl.append(b);
+    });
+    $("pick").showModal();
+  } else if (wallets.length === 1) useWallet(wallets[0].provider);
+  else if (window.ethereum) useWallet(window.ethereum);
+  else alertBox("No browser wallet found. Install MetaMask (or Rabby / Phantom) and reload.");
+}
+async function useWallet(p) {
+  try {
+    // Wallets can hang forever on file:// pages (their messaging rejects the "null" origin), so time out.
+    const accts = await Promise.race([
+      p.request({ method: "eth_requestAccounts" }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error("wallet did not answer")), 15000)),
+    ]);
+    eip1193 = p; account = ethers.getAddress(accts[0]);
+    p.on && p.on("accountsChanged", (a) => { account = a[0] ? ethers.getAddress(a[0]) : null; render(); });
+    log("Connected " + account);
+  } catch (e) {
+    log("Connect failed: " + errMsg(e), "err");
+    if (location.protocol === "file:") fileNotice();
+  }
+  render();
+}
+function fileNotice() {
+  const el = $("nowallet");
+  el.innerHTML = "<strong>Wallets can't connect to a page opened as a file.</strong> Serve it instead: open Terminal in the folder with this file, run <code>python3 -m http.server 8000</code>, then open <code>http://localhost:8000/" + encodeURIComponent(location.pathname.split("/").pop()) + "</code> in Chrome.";
+  el.classList.remove("hidden");
+}
+function alertBox(t) {
+  log(t, "err");
+  const el = $("nowallet");
+  const local = location.protocol === "file:";
+  el.innerHTML = "<strong>No wallet found on this page.</strong> " + (local
+    ? "Wallet extensions don't load into files opened from your computer unless you allow it. Either: (1) go to <code>chrome://extensions</code> → your wallet (Phantom or MetaMask) → <em>Details</em> → turn on <em>Allow access to file URLs</em>, then reload this page; or (2) open a terminal in this file's folder, run <code>python3 -m http.server 8000</code>, and open <code>http://localhost:8000/" + encodeURIComponent(location.pathname.split("/").pop()) + "</code>."
+    : "Install Phantom, MetaMask or Rabby in this browser, unlock it, and reload. Wallets don't work inside in-app or phone browsers; use desktop Chrome.");
+  el.classList.remove("hidden");
+}
+
+async function ensureChain(side) {
+  const want = net()[side];
+  if (DEV) return signer();
+  const hex = "0x" + want.chainId.toString(16);
+  const cur = await eip1193.request({ method: "eth_chainId" });
+  if (parseInt(cur, 16) !== want.chainId) {
+    log("Switching wallet to " + want.name);
+    try {
+      await eip1193.request({ method: "wallet_switchEthereumChain", params: [{ chainId: hex }] });
+    } catch (e) {
+      if (e && (e.code === 4902 || /unrecognized|not added|unknown chain/i.test(errMsg(e)))) {
+        const rpc = (S.rpc || "").trim();
+        if (!rpc) throw new Error(`Your wallet doesn't know ${want.name}. Add it in the wallet, or paste its RPC URL under "Edit addresses / settings" and try again.`);
+        await eip1193.request({ method: "wallet_addEthereumChain", params: [{ chainId: hex, chainName: want.name, rpcUrls: [rpc], nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 } }] });
+      } else throw e;
+    }
+  }
+  return signer();
+}
+async function signer() { return new ethers.BrowserProvider(eip1193, "any").getSigner(); }
+
+async function run(label, fn) {
+  if (busy) return; busy = true; render();
+  try { await fn(); } catch (e) { log(label + " failed: " + errMsg(e), "err"); }
+  busy = false; render();
+}
+async function send(label, side, txPromise) {
+  log(label + ": confirm in your wallet");
+  const tx = await txPromise; txLink(tx.hash, side);
+  const r = await tx.wait(); if (r.status !== 1) throw new Error(label + " reverted");
+  log(label + " done"); return { tx, r };
+}
+async function deploy(label, side, name, args, s) {
+  const f = new ethers.ContractFactory(C[name].abi, C[name].bytecode, s);
+  log(label + ": confirm in your wallet");
+  const c = await f.deploy(...args); txLink(c.deploymentTransaction().hash, side);
+  await c.waitForDeployment(); const a = await c.getAddress(); log(label + " at " + a); return a;
+}
+
+// ---- steps ----
+async function step1() {
+  const s = await ensureChain("eth");
+  if (!ethToken()) {
+    if (mode === "main") throw new Error("No JESUS token address");
+    S.token = await deploy("Test JESUS token", "eth", "MockJesus", [], s); store.save(); render();
+  }
+  await checkEndpoint("eth", s);
+  S.adapter = await deploy("Adapter", "eth", "JesusBridge", [ethToken(), ep("eth"), account], s);
+  store.save();
+}
+async function step2() {
+  const s = await ensureChain("rh");
+  await checkEndpoint("rh", s);
+  const args = ["Jesus Coin", "JESUS", ep("rh"), account];
+  const salt = $("salt").value.trim();
+  if (!salt) { S.oft = await deploy("Robinhood token", "rh", "JesusOFT", args, s); store.save(); return; }
+  if (!/^0x[0-9a-fA-F]{64}$/.test(salt)) throw new Error("Salt must be 0x + 64 hex characters");
+  const initCode = (await new ethers.ContractFactory(C.JesusOFT.abi, C.JesusOFT.bytecode).getDeployTransaction(...args)).data;
+  const predicted = ethers.getCreate2Address(FACTORY, salt, ethers.keccak256(initCode));
+  if ((await s.provider.getCode(FACTORY)) === "0x") throw new Error("The CREATE2 factory isn't deployed on this chain yet. Deploy without a salt, or deploy the factory first.");
+  if ((await s.provider.getCode(predicted)) !== "0x") throw new Error(predicted + " already has a contract");
+  const { r } = await send("Robinhood token at " + predicted, "rh", s.sendTransaction({ to: FACTORY, data: ethers.concat([salt, initCode]) }));
+  // Read at the receipt's block: the "latest" read above can still be cached by the provider.
+  if ((await s.provider.getCode(predicted, r.blockNumber)) === "0x") throw new Error("Deploy didn't land at " + predicted);
+  S.oft = predicted; store.save();
+}
+async function wire(side) {
+  const s = await ensureChain(side);
+  const me = side === "eth" ? S.adapter : S.oft, peer = side === "eth" ? S.oft : S.adapter;
+  const peerEid = side === "eth" ? net().rh.eid : net().eth.eid;
+  const c = new ethers.Contract(me, C[side === "eth" ? "JesusBridge" : "JesusOFT"].abi, s);
+  const owner = await c.owner();
+  if (owner.toLowerCase() !== account.toLowerCase()) throw new Error("Connected wallet isn't the owner (" + owner + ")");
+  const want = ethers.zeroPadValue(peer, 32);
+  if ((await c.peers(peerEid)).toLowerCase() !== want.toLowerCase()) await send("Set peer", side, c.setPeer(peerEid, want));
+  if ((await c.rateLimits(peerEid)).limit === 0n) await send("Open outbound", side, c.setRateLimits([{ dstEid: peerEid, limit: UNLIMITED, window: DAY }]));
+  if ((await c.inboundRateLimits(peerEid)).limit === 0n) await send("Open inbound", side, c.setInboundRateLimits([{ dstEid: peerEid, limit: UNLIMITED, window: DAY }]));
+  await setDvns(side);
+  S[side === "eth" ? "wiredEth" : "wiredRh"] = true; store.save();
+}
+// Amount that arrives after the bridge fee and dust; used as minAmountLD so the send can't take more than quoted.
+async function received(c, p) {
+  const [, , r] = await c.quoteOFT({ ...p, minAmountLD: 0n });
+  let bps = 0n; try { bps = await c.feeBps(); } catch {}
+  log("Sending " + ethers.formatEther(r.amountSentLD) + " JESUS, " + ethers.formatEther(r.amountReceivedLD) + " arrives" + (bps ? " (" + Number(bps) / 100 + "% bridge fee " + ethers.formatEther(r.amountSentLD - r.amountReceivedLD) + ")" : ""));
+  return r.amountReceivedLD;
+}
+async function bridge() {
+  const out = $("dir").value === "out";
+  const side = out ? "eth" : "rh";
+  const s = await ensureChain(side);
+  const amount = ethers.parseEther(String($("amt").value).replace(/,/g, "").trim() || "0");
+  if (amount === 0n) throw new Error("Enter an amount");
+  const c = new ethers.Contract(out ? S.adapter : S.oft, C[out ? "JesusBridge" : "JesusOFT"].abi, s);
+  if (out) {
+    const t = new ethers.Contract(ethToken(), C.MockJesus.abi, s);
+    if ((await t.allowance(account, S.adapter)) < amount) await send("Approve JESUS", side, t.approve(S.adapter, amount));
+  }
+  const p = { dstEid: out ? net().rh.eid : net().eth.eid, to: ethers.zeroPadValue(account, 32), amountLD: amount, minAmountLD: 0n, extraOptions: OPTIONS, composeMsg: "0x", oftCmd: "0x" };
+  p.minAmountLD = await received(c, p);
+  let fee;
+  try { fee = await c.quoteSend(p, false); }
+  catch (e) { log("Fee quote failed: " + errMsg(e) + ". Running diagnostics…", "err"); await diagnose(); throw new Error("can't quote the LayerZero fee, see the diagnostics above"); }
+  log("LayerZero fee " + ethers.formatEther(fee.nativeFee) + " ETH");
+  const { tx } = await send("Bridge " + ethers.formatEther(amount) + " JESUS", side, c.send(p, { nativeFee: fee.nativeFee, lzTokenFee: 0n }, account, { value: fee.nativeFee }));
+  S[out ? "sentOut" : "sentBack"] = true; store.save();
+  $("r4").classList.remove("hidden");
+  $("r4t").innerHTML = `Sent. It arrives in a few minutes. <a target="_blank" rel="noopener" href="${net().scan}${tx.hash}">Track on LayerZero Scan</a>`;
+}
+// Read-only checks of the LayerZero pathway. Reads go through a public RPC when one is known,
+// because wallet RPCs often drop revert data ("missing revert data").
+const PUBLIC_RPC = { 1: "https://ethereum-rpc.publicnode.com", 11155111: "https://ethereum-sepolia-rpc.publicnode.com" };
+const EP_ABI = [
+  "function getSendLibrary(address,uint32) view returns (address)",
+  "function getReceiveLibrary(address,uint32) view returns (address,bool)",
+  "function isSupportedEid(uint32) view returns (bool)",
+  "function getConfig(address,address,uint32,uint32) view returns (bytes)",
+  "function setConfig(address,address,tuple(uint32 eid, uint32 configType, bytes config)[])",
+  "function inboundNonce(address,uint32,bytes32) view returns (uint64)",
+  "function skip(address,uint32,bytes32,uint64)",
+];
+const ULN_T = "tuple(uint64 confirmations, uint8 requiredDVNCount, uint8 optionalDVNCount, uint8 optionalDVNThreshold, address[] requiredDVNs, address[] optionalDVNs)";
+// DVN addresses: LayerZero-Labs/lz-address-book (LayerZeroV2DVN<Chain>Mainnet: DVN_LAYERZERO_LABS, DVN_NETHERMIND).
+// LayerZero Labs only verifies mainnet messages whose config has at least 2 DVNs. Not the
+// lz-evm-sdk-v2 "DVN" deployment, which on Robinhood is a different contract that LayerZero Labs doesn't run.
+// LayerZero ships new pathways with a placeholder "dead" DVN, so quotes revert until the OApp picks real verifiers.
+// Sets the LayerZero Labs DVN as the single required verifier for sending and receiving, keeping the default
+// block confirmations (which LayerZero already pairs up across the two chains).
+async function setDvns(side) {
+  const n = net()[side];
+  if (!n.dvns) return; // testnet / local: LayerZero's defaults work
+  const s = await ensureChain(side);
+  const me = side === "eth" ? S.adapter : S.oft, eid = side === "eth" ? net().rh.eid : net().eth.eid;
+  const c = new ethers.Contract(me, C[side === "eth" ? "JesusBridge" : "JesusOFT"].abi, s);
+  if ((await c.owner()).toLowerCase() !== account.toLowerCase()) throw new Error("Connected wallet isn't the owner");
+  // The ULN requires required DVNs sorted ascending with no duplicates.
+  const want = [...n.dvns].map(ethers.getAddress).sort((a, b) => (BigInt(a) < BigInt(b) ? -1 : 1));
+  const epc = new ethers.Contract(ep(side), EP_ABI, s), coder = ethers.AbiCoder.defaultAbiCoder();
+  const libs = [["sending", await epc.getSendLibrary(me, eid)], ["receiving", (await epc.getReceiveLibrary(me, eid))[0]]];
+  for (const [what, lib] of libs) {
+    const [u] = coder.decode([ULN_T], await epc.getConfig(me, lib, eid, 2));
+    const have = u.requiredDVNs.map((a) => a.toLowerCase()).join();
+    if (have === want.map((a) => a.toLowerCase()).join() && u.optionalDVNs.length === 0) { log(n.name + " " + what + " verifiers already set"); continue; }
+    const cfg = coder.encode([ULN_T], [[u.confirmations, want.length, 0, 0, want, []]]);
+    await send("Set " + what + " verifiers on " + n.name, side, epc.setConfig(me, lib, [{ eid, configType: 2, config: cfg }]));
+  }
+  S[side === "eth" ? "dvnEth2" : "dvnRh2"] = true; store.save();
+}
+const LZ_ERRORS = [
+  "error LZ_DefaultSendLibUnavailable()", "error LZ_DefaultReceiveLibUnavailable()", "error LZ_InvalidArgument()", "error LZ_InsufficientFee(uint256,uint256,uint256,uint256)",
+  "error LZ_ULN_InvalidWorkerId(uint8)", "error LZ_ULN_InvalidWorkerOptions(uint256)", "error LZ_ULN_InvalidLegacyType1Option()", "error LZ_ULN_InvalidLegacyType2Option()",
+  "error NotImplemented()", "error Worker_NotAllowed()", "error Worker_OnlyMessageLib()", "error Executor_UnsupportedOptionType(uint8)",
+  "error Executor_ZeroLzReceiveGasProvided()", "error Executor_NativeAmountExceedsCap(uint256,uint256)", "error EnforcedPause()",
+];
+async function readProvider(side) {
+  const id = net()[side].chainId, url = PUBLIC_RPC[id] || (side === "rh" && (S.rpc || "").trim());
+  if (url) try { const p = new ethers.JsonRpcProvider(url, id, { staticNetwork: true }); await p.getBlockNumber(); return p; } catch {}
+  return (await ensureChain(side)).provider;
+}
+async function diagnose() {
+  const out = $("dir").value === "out", side = out ? "eth" : "rh";
+  const me = out ? S.adapter : S.oft, dstEid = out ? net().rh.eid : net().eth.eid;
+  if (!me) throw new Error("Deploy both sides first");
+  const pr = await readProvider(side);
+  const say = (m, bad) => log("Diagnose: " + m, bad ? "err" : "");
+  const epc = new ethers.Contract(ep(side), EP_ABI, pr);
+  const c = new ethers.Contract(me, C[out ? "JesusBridge" : "JesusOFT"].abi, pr);
+  say(net()[side].name + " endpoint supports eid " + dstEid + ": " + (await epc.isSupportedEid(dstEid).catch(() => "unknown")));
+  say("peer for " + dstEid + ": " + (await c.peers(dstEid)));
+  try { say("paused: " + (await c.paused())); } catch {}
+  try { const r = await c.rateLimits(dstEid); say("outbound limit: " + (r.limit === UNLIMITED ? "unlimited" : r.limit.toString())); } catch {}
+  let lib;
+  try { lib = await epc.getSendLibrary(me, dstEid); say("send library: " + lib); } catch (e) { say("no send library for " + dstEid + " (" + errMsg(e) + ")", true); }
+  if (lib && lib !== ethers.ZeroAddress) {
+    const coder = ethers.AbiCoder.defaultAbiCoder();
+    try {
+      const [ex] = coder.decode(["tuple(uint32 maxMessageSize, address executor)"], await epc.getConfig(me, lib, dstEid, 1));
+      say("executor: " + ex.executor + " (max message " + ex.maxMessageSize + " bytes)");
+    } catch (e) { say("executor config unreadable: " + errMsg(e), true); }
+    try {
+      const [u] = coder.decode(["tuple(uint64 confirmations, uint8 requiredDVNCount, uint8 optionalDVNCount, uint8 optionalDVNThreshold, address[] requiredDVNs, address[] optionalDVNs)"], await epc.getConfig(me, lib, dstEid, 2));
+      if (net()[side].deadDvn && u.requiredDVNs.some((a) => a.toLowerCase() === net()[side].deadDvn.toLowerCase())) say("the required verifier is LayerZero's placeholder DEAD DVN: click Set on both sides in step 3", true);
+      say("DVNs: required [" + u.requiredDVNs.join(", ") + "] optional [" + u.optionalDVNs.join(", ") + "] threshold " + u.optionalDVNThreshold + ", confirmations " + u.confirmations);
+    } catch (e) { say("DVN config unreadable: " + errMsg(e), true); }
+  }
+  const amount = ethers.parseEther(String($("amt").value).replace(/,/g, "").trim() || "1");
+  const p = { dstEid, to: ethers.zeroPadValue(account || me, 32), amountLD: amount, minAmountLD: 0n, extraOptions: OPTIONS, composeMsg: "0x", oftCmd: "0x" };
+  try { p.minAmountLD = await received(c, p); } catch {}
+  try { const f = await c.quoteSend(p, false); say("fee quote OK: " + ethers.formatEther(f.nativeFee) + " ETH"); }
+  catch (e) {
+    const data = e.data || (e.info && e.info.error && e.info.error.data) || (e.error && e.error.data);
+    let why = errMsg(e);
+    if (typeof data === "string" && data.length >= 10) {
+      const iface = new ethers.Interface([...C[out ? "JesusBridge" : "JesusOFT"].abi.filter((x) => x.type === "error"), ...LZ_ERRORS]);
+      try { const d = iface.parseError(data); why = d ? d.name + "(" + d.args.join(", ") + ")" : "unknown error " + data.slice(0, 10); } catch { why = "unknown error " + data.slice(0, 10); }
+    }
+    say("fee quote reverts: " + why, true);
+  }
+  say("done. Screenshot or copy this log and send it to Claude.");
+}
+// Transfers on a route are numbered, and the endpoint delivers number N only after every earlier one is verified.
+// A transfer that will never be verified (e.g. sent before the DVN fix) blocks the route until the receiving
+// side's owner skips it. Skipping gives up that transfer: its JESUS stays locked on Ethereum (or burned on
+// Robinhood) and never arrives.
+async function skipStuck() {
+  const out = $("dir").value === "out", side = out ? "rh" : "eth";
+  const me = out ? S.oft : S.adapter, src = out ? S.adapter : S.oft, srcEid = out ? net().eth.eid : net().rh.eid;
+  const s = await ensureChain(side);
+  const epc = new ethers.Contract(ep(side), EP_ABI, s);
+  const next = (await epc.inboundNonce(me, srcEid, ethers.zeroPadValue(src, 32))) + 1n;
+  const route = out ? "Ethereum → Robinhood" : "Robinhood → Ethereum";
+  if (!confirm(`Skip transfer #${next} on ${route}? It will never arrive and its JESUS is given up for good. Only do this for a transfer that is stuck on LayerZero Scan.`)) return;
+  await send("Skip transfer #" + next, side, epc.skip(me, srcEid, ethers.zeroPadValue(src, 32), next));
+}
+async function refreshBal() {
+  const out = $("dir").value === "out";
+  const s = await ensureChain(out ? "eth" : "rh");
+  const t = new ethers.Contract(out ? ethToken() : S.oft, C.MockJesus.abi, s);
+  $("bal").textContent = "Balance on " + net()[out ? "eth" : "rh"].name + ": " + Number(ethers.formatEther(await t.balanceOf(account))).toLocaleString() + " JESUS";
+}
+
+// ---- view ----
+function render() {
+  const n = net(), main = mode === "main";
+  $("modeTest").classList.toggle("on", !main); $("modeMain").classList.toggle("on", main);
+  $("banner").className = "banner" + (main ? " main" : "");
+  $("banner").textContent = main ? "MAINNET · Ethereum ⇄ Robinhood Chain. Real JESUS and real ETH." : "TESTNET · " + n.eth.name + " ⇄ " + n.rh.name + ". Safe to experiment.";
+  document.querySelectorAll(".ethName").forEach((e) => (e.textContent = n.eth.name));
+  document.querySelectorAll(".rhName").forEach((e) => (e.textContent = n.rh.name));
+  $("mockNote").classList.toggle("hidden", main || !!ethToken());
+  $("tokAddr").textContent = ethToken() || "test token, created in this step";
+  $("wallet").textContent = account ? account.slice(0, 6) + "…" + account.slice(-4) + " · disconnect" : "Connect wallet";
+  $("sAcct").textContent = account || "Not connected";
+  $("a1").textContent = $("s1").textContent = S.adapter || "Not deployed";
+  $("a2").textContent = $("s2").textContent = S.oft || "Not deployed";
+  const done = [null, !!S.adapter, !!S.oft, !!(S.wiredEth && S.wiredRh), !!S.sentBack];
+  const now = done.indexOf(false, 1);
+  for (let i = 1; i <= 4; i++) {
+    $("c" + i).className = "card" + (i === now ? " now" : "");
+    $("b" + i).className = "pill" + (done[i] || i === now ? "" : " wait");
+    $("b" + i).textContent = done[i] ? "✓ Done" : i === now ? "Current step" : "Waiting";
+  }
+  const can = !!account && !busy;
+  $("go1").disabled = !can || !!S.adapter;
+  $("go2").disabled = !can || !S.adapter || !!S.oft;
+  $("go3a").disabled = !can || !S.oft || !!S.wiredEth; $("go3a").textContent = S.wiredEth ? "✓ Connected" : "Connect on Ethereum";
+  $("go3b").disabled = !can || !S.oft || !!S.wiredRh; $("go3b").textContent = S.wiredRh ? "✓ Connected" : "Connect on Robinhood";
+  $("go4").disabled = !can || !(S.wiredEth && S.wiredRh);
+  $("dvnRow").classList.toggle("hidden", !net().eth.dvns);
+  $("dvnA").disabled = !can || !S.adapter || !S.oft; $("dvnA").textContent = S.dvnEth2 ? "✓ Set on Ethereum" : "Set on Ethereum";
+  $("dvnB").disabled = !can || !S.adapter || !S.oft; $("dvnB").textContent = S.dvnRh2 ? "✓ Set on Robinhood" : "Set on Robinhood";
+  $("refresh").disabled = !can || !S.adapter;
+  $("eToken").value = ethToken(); $("eToken").disabled = main;
+  $("eAdapter").value = S.adapter || ""; $("eOft").value = S.oft || ""; $("eRpc").value = S.rpc || "";
+  $("eEpEth").placeholder = n.eth.endpoint; $("eEpRh").placeholder = n.rh.endpoint;
+  $("eEpEth").value = S.epEth || ""; $("eEpRh").value = S.epRh || "";
+  const salt = $("salt").value.trim();
+  if (/^0x[0-9a-fA-F]{64}$/.test(salt) && account) {
+    new ethers.ContractFactory(C.JesusOFT.abi, C.JesusOFT.bytecode).getDeployTransaction("Jesus Coin", "JESUS", ep("rh"), account)
+      .then((t) => { $("predicted").textContent = "Will deploy at " + ethers.getCreate2Address(FACTORY, salt, ethers.keccak256(t.data)) + " (owner " + account + ")"; });
+  } else $("predicted").textContent = "The salt only works for the wallet it was mined for.";
+}
+
+$("wallet").onclick = connect;
+$("modeTest").onclick = () => { mode = "test"; store.load(); render(); };
+$("modeMain").onclick = () => {
+  const t = JSON.parse(localStorage.getItem("jesus-bridge-test") || "{}");
+  if (!t.sentBack && !confirm("You haven't finished a testnet round trip in this browser. Switch to mainnet anyway?")) return;
+  mode = "main"; store.load(); render();
+};
+$("go1").onclick = () => run("Step 1", step1);
+$("go2").onclick = () => run("Step 2", step2);
+$("go3a").onclick = () => run("Connect on Ethereum", () => wire("eth"));
+$("go3b").onclick = () => run("Connect on Robinhood", () => wire("rh"));
+$("dvnA").onclick = () => run("Set verifier on Ethereum", () => setDvns("eth"));
+$("dvnB").onclick = () => run("Set verifier on Robinhood", () => setDvns("rh"));
+$("go4").onclick = () => run("Bridge", bridge);
+$("refresh").onclick = () => run("Balance", refreshBal);
+$("diag").onclick = () => run("Diagnose", diagnose);
+$("skip").onclick = () => run("Skip", skipStuck);
+$("salt").oninput = render;
+$("dir").onchange = () => { $("r4").classList.add("hidden"); render(); };
+$("saveEdit").onclick = () => {
+  const chk = (v) => { v = v.trim(); if (v && !ethers.isAddress(v)) throw new Error("Not an address: " + v); return v ? ethers.getAddress(v) : ""; };
+  try { if (mode === "test") S.token = chk($("eToken").value); S.adapter = chk($("eAdapter").value); S.oft = chk($("eOft").value); S.rpc = $("eRpc").value.trim(); S.epEth = chk($("eEpEth").value); S.epRh = chk($("eEpRh").value); store.save(); log("Saved"); } catch (e) { log(errMsg(e), "err"); }
+  render();
+};
+$("clear").onclick = () => { if (confirm("Forget the " + mode + " addresses saved in this browser? (Contracts on-chain are not affected.)")) { S = {}; store.save(); render(); } };
+$("dl").onclick = () => {
+  const data = { mode, ethereum: { chain: net().eth.name, eid: net().eth.eid, token: ethToken(), adapter: S.adapter || null }, robinhood: { chain: net().rh.name, eid: net().rh.eid, token: S.oft || null }, owner: account };
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })); a.download = "jesus-bridge-" + mode + ".json"; a.click();
+};
+store.load(); render();
+if (location.protocol === "file:") fileNotice();
+</script>
+</body>
+</html>
