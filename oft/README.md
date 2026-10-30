@@ -55,6 +55,20 @@ Deployments are written to `deployments/<network>.json`.
 
 (From `@layerzerolabs/lz-definitions` and `@layerzerolabs/lz-evm-sdk-v2` 3.1.19.)
 
+## Deploy page (no command line)
+
+`frontend/deploy.html` is a single self-contained page (ethers and the compiled contracts are built in). Open it in a
+desktop browser with a wallet (MetaMask, Rabby or Phantom; any EIP-6963 wallet) and follow the four steps:
+
+1. Deploy the Ethereum adapter (on testnet it first creates a test JESUS with the full supply, sent to you).
+2. Deploy JESUS on Robinhood Chain, optionally at a vanity address from a salt mined with `scripts/mine-salt.js`.
+3. Connect the two sides (peer + unlimited limits, skipping anything already set).
+4. Bridge a test amount there and back, with a LayerZero Scan link.
+
+Testnet and mainnet are separate modes; addresses are saved in the browser and can be downloaded as JSON. Rebuild
+after changing the contracts: `npx hardhat compile && node frontend/build.js`. `frontend/e2e.js` runs the whole
+flow against a local Hardhat node.
+
 ## Vanity address (e.g. `0x777…abba`)
 
 The Robinhood token can be deployed at a chosen-pattern address through the standard CREATE2 factory
