@@ -55,6 +55,25 @@ Deployments are written to `deployments/<network>.json`.
 
 (From `@layerzerolabs/lz-definitions` and `@layerzerolabs/lz-evm-sdk-v2` 3.1.19.)
 
+## Vanity address (e.g. `0x777…abba`)
+
+The Robinhood token can be deployed at a chosen-pattern address through the standard CREATE2 factory
+(deterministic deployment proxy, `0x4e59b44847b379578588920cA78FbF26c0B4956C`). The address depends on the init code,
+which includes the endpoint and the owner, so both must be final before mining. Use this instead of `deploy.js` on
+the Robinhood side:
+
+```bash
+TARGET=robinhood OWNER=0xYourWallet npx hardhat run scripts/vanity-initcode.js   # writes deployments/robinhood.vanity.json
+node scripts/mine-salt.js deployments/robinhood.vanity.json 777 abba               # all CPU cores; ~370k tries/s on 4 cores
+npx hardhat run scripts/deploy-vanity.js --network robinhood                       # deploys at the mined address
+```
+
+`0x777…abba` is 7 hex characters: about 268M tries on average, roughly 10 to 15 minutes on a 4-core machine. Each
+extra character is ~16x more. Testnet and mainnet need separate mining (different endpoint). Copying the salt gets
+anyone only the identical contract owned by `OWNER`, so front-running cannot take the address. `deploy-vanity.js`
+stops if the factory is not deployed on the chain; it can be deployed by anyone with its standard presigned
+transaction (see the proxy's repository). `wire.js` must then be run from the `OWNER` wallet.
+
 ## Before mainnet
 
 - Set DVNs explicitly on both sides (at least two independent DVNs, e.g. LayerZero Labs + one more) with `endpoint.setConfig` from the delegate. The scripts leave LayerZero's defaults in place.
